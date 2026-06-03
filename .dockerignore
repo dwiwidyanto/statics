@@ -6,7 +6,6 @@ tests
 *.log
 Dockerfile
 .dockerignore
-nginx.conf
 README.md
 CVS
 .svn
