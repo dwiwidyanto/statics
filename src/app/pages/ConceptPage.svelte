@@ -129,10 +129,48 @@
     res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Inline code
     res = res.replace(/`(.*?)`/g, '<code>$1</code>');
-    // Display Math
-    res = res.replace(/\$\$(.*?)\$\$/g, '<div class="math-display">$1</div>');
-    // Inline Math
-    res = res.replace(/\$(.*?)\$/g, '<span class="math-inline">$1</span>');
+    
+    // Display Math - parse LaTeX to HTML inside
+    res = res.replace(/\$\$(.*?)\$\$/g, (_, math) => {
+      return `<div class="math-display">${parseMathHtml(math)}</div>`;
+    });
+    
+    // Inline Math - parse LaTeX to HTML inside
+    res = res.replace(/\$(.*?)\$/g, (_, math) => {
+      return `<span class="math-inline">${parseMathHtml(math)}</span>`;
+    });
+    return res;
+  }
+
+  function parseMathHtml(math: string): string {
+    let res = math;
+    
+    // Spacing
+    res = res.replace(/\\quad/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+    res = res.replace(/\\,/g, '&nbsp;');
+    
+    // Greek & Math Symbols
+    res = res.replace(/\\alpha/g, 'α');
+    res = res.replace(/\\beta/g, 'β');
+    res = res.replace(/\\theta/g, 'θ');
+    res = res.replace(/\\sum/g, 'Σ');
+    res = res.replace(/\\Sigma/g, 'Σ');
+    res = res.replace(/\\cdot/g, '·');
+    
+    // Vector arrow: \vec{a} -> a with combining vector arrow (&#x20D7;)
+    res = res.replace(/\\vec\{(.*?)\}/g, '$1&#x20D7;');
+    
+    // Functions
+    res = res.replace(/\\cos/g, 'cos');
+    res = res.replace(/\\sin/g, 'sin');
+    
+    // Subscripts: R_{Ax} -> R<sub>Ax</sub>, F_x -> F<sub>x</sub>
+    res = res.replace(/([a-zA-Z0-9]+)_\{(.*?)\}/g, '$1<sub>$2</sub>');
+    res = res.replace(/([a-zA-Z0-9]+)_([a-zA-Z0-9])/g, '$1<sub>$2</sub>');
+    
+    // Braces cleanup
+    res = res.replace(/[\{\}]/g, '');
+    
     return res;
   }
 
