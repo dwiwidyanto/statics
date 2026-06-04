@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { RigidBody, Support, Load, Reaction, Point } from '../domain/models/types';
   import { getDistributedLoadResultant } from '../domain/loads/load';
+  import { locale } from '../utils/i18n';
 
   export let body: RigidBody;
   export let supports: Support[];
@@ -29,8 +30,8 @@
     return centerX + (xMeter - body.width / 2) * scale;
   }
 
+  // In SVG, Y goes down, so we subtract from centerY
   function toSvgY(yMeter: number): number {
-    // In SVG, Y goes down, so we subtract from centerY
     return centerY - (yMeter - body.height / 2) * scale;
   }
 
@@ -136,7 +137,10 @@
           class="body-label"
           text-anchor="middle"
         >
-          {body.type.toUpperCase()} ({body.width}m × {body.height}m)
+          {$locale === 'id' 
+            ? (body.type === 'beam' ? 'BALOK' : 'PLAT') 
+            : body.type.toUpperCase()
+          } ({body.width}m × {body.height}m)
         </text>
       {/if}
     </g>
@@ -166,7 +170,6 @@
         {:else if support.type === 'roller'}
           <!-- Roller: Triangle with wheels underneath -->
           {@const rad = support.angle * Math.PI / 180}
-          <!-- Standard horizontal roller (reaction vertical) -->
           <polygon 
             points="{sx},{sy} {sx-10},{sy+12} {sx+10},{sy+12}" 
             class="support-shape roller {selectedItemId === support.id ? 'selected' : ''}" 
@@ -222,7 +225,7 @@
           {@const len = 45}
           {@const rad = load.angle * Math.PI / 180}
           {@const startX = sx - len * Math.cos(rad)}
-          {@const startY = sy + len * Math.sin(rad)} <!-- + because SVG Y is down -->
+          {@const startY = sy + len * Math.sin(rad)}
 
           <line 
             x1={startX} 
@@ -243,9 +246,10 @@
               {load.label} ({load.magnitude}N)
             </text>
           {/if}
+        {/if}
 
-        {:else if load.type === 'body_weight'}
-          <!-- Body Weight: Draw at centroid, straight down -->
+        {#if load.type === 'body_weight'}
+          <!-- Body Weight: Centroid, straight down -->
           {@const sx = toSvgX(load.position.x)}
           {@const sy = toSvgY(load.position.y)}
           <line 
@@ -260,15 +264,14 @@
             W = {load.magnitude}N
           </text>
           <circle cx={sx} cy={sy} r="4" fill="var(--color-force)" />
+        {/if}
 
-        {:else if load.type === 'applied_moment'}
+        {#if load.type === 'applied_moment'}
           <!-- Moment: circular arc arrow -->
           {@const sx = toSvgX(load.position.x)}
           {@const sy = toSvgY(load.position.y)}
           {@const isPositive = load.magnitude >= 0}
           
-          <!-- Arc path representing CCW (positive) or CW (negative) -->
-          <!-- We draw a path that loops 270 degrees around the center -->
           <path
             d={isPositive
               ? `M ${sx + 15} ${sy + 5} A 16 16 0 1 0 ${sx - 5} ${sy - 15}`
@@ -285,24 +288,21 @@
               {load.label} ({Math.abs(load.magnitude)} N·m {isPositive ? '↺' : '↻'})
             </text>
           {/if}
+        {/if}
 
-        {:else if load.type === 'distributed_load'}
+        {#if load.type === 'distributed_load'}
           {@const x1 = toSvgX(load.startPosition.x)}
           {@const y1 = toSvgY(load.startPosition.y)}
           {@const x2 = toSvgX(load.endPosition.x)}
           {@const y2 = toSvgY(load.endPosition.y)}
           
-          <!-- Height of the load diagram above the body surface -->
           {@const distHeight = 25}
           {@const topY1 = y1 - distHeight}
           {@const topY2 = y2 - distHeight}
           
-          <!-- Outer boundary line of distributed load -->
           <line x1={x1} y1={topY1} x2={x2} y2={topY2} class="dist-load-top" />
           <path d="M {x1} {y1} L {x1} {topY1} L {x2} {topY2} L {x2} {y2} Z" class="dist-load-fill" />
 
-          <!-- Internal arrows pointing down to the body -->
-          <!-- Interpolate arrows between start and end -->
           {@const steps = Math.max(3, Math.floor(Math.abs(x2 - x1) / 15))}
           {#each Array(steps + 1) as _, i}
             {@const t = i / steps}
@@ -336,10 +336,8 @@
         {@const value = reaction.magnitude}
         
         {#if reaction.type === 'moment'}
-          <!-- Reaction Moment: curved blue arrow centered around support -->
-          <!-- CCW if positive, CW if negative -->
+          <!-- Reaction Moment: curved blue arrow -->
           {@const isPositive = value >= 0}
-          <!-- Only draw if non-zero -->
           {#if Math.abs(value) > 1e-2}
             <path
               d={isPositive
@@ -351,22 +349,22 @@
               marker-end="url(#arrow-reaction)"
             />
             <text x={sx} y={sy - 32} class="reaction-text" text-anchor="middle">
-              {reaction.symbol} = {value.toFixed(1)} N·m
+              {#if reaction.symbol.includes('_')}
+                {@const parts = reaction.symbol.split('_')}
+                {parts[0]}<tspan font-size="8px" dy="3">{parts[1]}</tspan><tspan dy="-3" font-size="11px"> = {value.toFixed(1)} N·m</tspan>
+              {:else}
+                {reaction.symbol} = {value.toFixed(1)} N·m
+              {/if}
             </text>
           {/if}
         {:else}
           <!-- Reaction Force: arrow pointing in direction of solved value -->
-          <!-- Note: reaction.direction defines standard positive axis. -->
-          <!-- If value is negative, we flip the direction of the arrow. -->
           {@const forceMag = Math.abs(value)}
-          <!-- Only draw arrow if magnitude is significant, or draw dashed arrow if 0 -->
           {#if forceMag > 1e-2}
             {@const actualDirX = reaction.direction.x * Math.sign(value)}
             {@const actualDirY = reaction.direction.y * Math.sign(value)}
             {@const arrowLen = 50}
             
-            <!-- We draw reaction arrow as PULLING away from the joint, pointing outwards -->
-            <!-- e.g. from joint (sx, sy) to (sx + len * dirX, sy - len * dirY) -->
             <line 
               x1={sx} 
               y1={sy} 
@@ -381,10 +379,15 @@
               class="reaction-text"
               text-anchor={actualDirX > 0.1 ? 'start' : (actualDirX < -0.1 ? 'end' : 'middle')}
             >
-              {reaction.symbol} = {value.toFixed(1)} N
+              {#if reaction.symbol.includes('_')}
+                {@const parts = reaction.symbol.split('_')}
+                {parts[0]}<tspan font-size="8px" dy="3">{parts[1]}</tspan><tspan dy="-3" font-size="11px"> = {value.toFixed(1)} N</tspan>
+              {:else}
+                {reaction.symbol} = {value.toFixed(1)} N
+              {/if}
             </text>
           {:else}
-            <!-- Zero reaction force: draw small dotted gray arrow to represent capability -->
+            <!-- Zero reaction force: dotted arrow -->
             <line
               x1={sx}
               y1={sy}
@@ -401,7 +404,12 @@
               class="reaction-text-zero"
               text-anchor="middle"
             >
-              {reaction.symbol} = 0
+              {#if reaction.symbol.includes('_')}
+                {@const parts = reaction.symbol.split('_')}
+                {parts[0]}<tspan font-size="7px" dy="2.5">{parts[1]}</tspan><tspan dy="-2.5" font-size="10px"> = 0</tspan>
+              {:else}
+                {reaction.symbol} = 0
+              {/if}
             </text>
           {/if}
         {/if}
@@ -413,7 +421,7 @@
       <g transform="translate({toSvgX(momentPivot.x)}, {toSvgY(momentPivot.y)})">
         <circle cx="0" cy="0" r="5" fill="none" stroke="var(--color-primary)" stroke-width="2" />
         <circle cx="0" cy="0" r="2" fill="var(--color-primary)" />
-        <text x="8" y="-4" class="pivot-label">Pivot (ΣM = 0)</text>
+        <text x="8" y="-4" class="pivot-label">{$locale === 'id' ? 'Pusat (ΣM = 0)' : 'Pivot (ΣM = 0)'}</text>
       </g>
     {/if}
   </svg>
@@ -509,7 +517,7 @@
     filter: drop-shadow(0px 0px 2px rgba(220, 38, 38, 0.4));
   }
   .load-line.weight {
-    stroke: #059669; /* Green for gravity force */
+    stroke: #059669;
   }
   
   .load-text {

@@ -111,11 +111,14 @@ export type DeterminacyClassification = 'statically_determinate' | 'statically_i
 export interface ProblemModel {
   id: string;
   title: string;
+  titleId?: string;
   description: string;
+  descriptionId?: string;
   body: RigidBody;
   supports: Support[];
   loads: Load[];
   expectedDeterminacy: DeterminacyClassification;
   expectedStability: StabilityClassification;
   hints: string[];
+  hintsId?: string[];
 }

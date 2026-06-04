@@ -1,77 +1,98 @@
 <script lang="ts">
-  import type { SolverResult, Support } from '../models/types';
+  import type { SolverResult, Support } from '../domain/models/types';
+  import { locale, translations } from '../../lib/utils/i18n';
 
   export let solverResult: SolverResult;
   export let supports: Support[];
   export let showReactions: boolean;
 
   $: hasUnknowns = Object.keys(solverResult.reactions).length > 0;
+
+  // Format equations to render nice subscripts and operators in HTML
+  function formatEquationHtml(eq: string): string {
+    if (!eq) return '';
+    // Replace R_Ax with R<sub>Ax</sub>, M_A with M<sub>A</sub>, F1_x with F1<sub>x</sub>, etc.
+    let res = eq.replace(/([RMFw])_([a-zA-Z0-9]+)/g, '$1<sub>$2</sub>');
+    // Replace * with ·
+    res = res.replace(/\s*\*\s*/g, ' · ');
+    return res;
+  }
+
+  // Format reaction symbols in HTML
+  function formatReactionSymbol(sym: string): string {
+    if (!sym) return '';
+    return sym.replace(/([RMF])_([a-zA-Z0-9]+)/g, '$1<sub>$2</sub>');
+  }
 </script>
 
 <div class="equations-view">
-  <h3 class="panel-title">Equilibrium Helper</h3>
+  <h3 class="panel-title">{translations[$locale].equilibriumHelper}</h3>
   
   <div class="pivot-info">
-    Moment pivot point is chosen at <strong>({solverResult.momentPivot.x.toFixed(1)}m, {solverResult.momentPivot.y.toFixed(1)}m)</strong> 
+    {translations[$locale].momentPivotChosen} <strong>({solverResult.momentPivot.x.toFixed(1)}m, {solverResult.momentPivot.y.toFixed(1)}m)</strong> 
     {#if supports.length > 0}
-      (Support {supports[0].label}).
+      ({translations[$locale].support} {supports[0].label}).
     {:else}
-      (Body center).
+      ({translations[$locale].bodyCenter}).
     {/if}
   </div>
 
   <div class="equations-box">
     <div class="equation-item">
       <div class="eq-header">
-        <span class="eq-symbol">ΣFx = 0</span>
-        <span class="eq-desc">Sum of horizontal forces must be zero</span>
+        <span class="eq-symbol">Σ F<sub>x</sub> = 0</span>
+        <span class="eq-desc">{translations[$locale].sumHorizontalDesc}</span>
       </div>
       <div class="eq-string monospace">
-        {solverResult.equations.fx}
+        {@html formatEquationHtml(solverResult.equations.fx)}
       </div>
     </div>
 
     <div class="equation-item">
       <div class="eq-header">
-        <span class="eq-symbol">ΣFy = 0</span>
-        <span class="eq-desc">Sum of vertical forces must be zero</span>
+        <span class="eq-symbol">Σ F<sub>y</sub> = 0</span>
+        <span class="eq-desc">{translations[$locale].sumVerticalDesc}</span>
       </div>
       <div class="eq-string monospace">
-        {solverResult.equations.fy}
+        {@html formatEquationHtml(solverResult.equations.fy)}
       </div>
     </div>
 
     <div class="equation-item">
       <div class="eq-header">
-        <span class="eq-symbol">ΣM_pivot = 0</span>
-        <span class="eq-desc">Sum of moments about pivot point must be zero</span>
+        <span class="eq-symbol">Σ M<sub>P</sub> = 0</span>
+        <span class="eq-desc">{translations[$locale].sumMomentDesc}</span>
       </div>
       <div class="eq-string monospace">
-        {solverResult.equations.moment}
+        {@html formatEquationHtml(solverResult.equations.moment)}
       </div>
       <div class="moment-explanation">
-        Moment is calculated as: <code>M = F_y * Δx - F_x * Δy</code>, where <code>Δx = x_force - x_pivot</code> and <code>Δy = y_force - y_pivot</code>. Counter-clockwise is positive (↺).
+        {#if $locale === 'id'}
+          Momen dihitung sebagai: <code>M = F<sub>y</sub> · Δx - F<sub>x</sub> · Δy</code>, di mana <code>Δx = x<sub>gaya</sub> - x<sub>pusat</sub></code> dan <code>Δy = y<sub>gaya</sub> - y<sub>pusat</sub></code>. Putaran berlawanan jarum jam bernilai positif (↺).
+        {:else}
+          Moment is calculated as: <code>M = F<sub>y</sub> · Δx - F<sub>x</sub> · Δy</code>, where <code>Δx = x<sub>force</sub> - x<sub>pivot</sub></code> and <code>Δy = y<sub>force</sub> - y<sub>pivot</sub></code>. Counter-clockwise is positive (↺).
+        {/if}
       </div>
     </div>
   </div>
 
-  <h3 class="panel-title" style="margin-top: 1rem;">Calculated Reactions</h3>
+  <h3 class="panel-title" style="margin-top: 1rem;">{translations[$locale].calculatedReactions}</h3>
   
   {#if solverResult.isSolved && showReactions}
     <div class="reactions-grid">
       {#each Object.entries(solverResult.reactions) as [symbol, value]}
         <div class="reaction-item-box">
-          <span class="reaction-symbol">{symbol}</span>
+          <span class="reaction-symbol">{@html formatReactionSymbol(symbol)}</span>
           <span class="reaction-value {value < -0.01 ? 'negative' : 'positive'}">
             {value.toFixed(2)} {symbol.startsWith('M') ? 'N·m' : 'N'}
           </span>
           <span class="reaction-direction">
             {#if symbol.startsWith('M')}
-              {value >= 0 ? 'Counter-clockwise (↺)' : 'Clockwise (↻)'}
+              {value >= 0 ? translations[$locale].ccw : translations[$locale].cw}
             {:else if symbol.endsWith('x')}
-              {value >= 0 ? 'Right (→)' : 'Left (←)'}
+              {value >= 0 ? translations[$locale].right : translations[$locale].left}
             {:else}
-              {value >= 0 ? 'Up (↑)' : 'Down (↓)'}
+              {value >= 0 ? translations[$locale].up : translations[$locale].down}
             {/if}
           </span>
         </div>
@@ -80,19 +101,31 @@
   {:else}
     <div class="unsolved-box">
       {#if solverResult.determinacy === 'statically_indeterminate'}
-        <p class="text-warning font-semibold">Statically Indeterminate System</p>
+        <p class="text-warning font-semibold">{translations[$locale].staticallyIndeterminateText}</p>
         <p class="text-sm text-secondary">
-          There are {Object.keys(solverResult.reactions).length || 4} unknown reactions, but only 3 equilibrium equations in 2D. 
-          To solve this, you must apply deformation conditions and material properties (Mechanics of Materials).
+          {#if $locale === 'id'}
+            Terdapat {Object.keys(solverResult.reactions).length || 4} reaksi yang tidak diketahui, tetapi hanya tersedia 3 persamaan kesetimbangan dalam 2D.
+            Untuk menyelesaikannya, Anda harus menerapkan kondisi deformasi dan properti bahan (Mekanika Bahan).
+          {:else}
+            There are {Object.keys(solverResult.reactions).length || 4} unknown reactions, but only 3 equilibrium equations in 2D. 
+            To solve this, you must apply deformation conditions and material properties (Mechanics of Materials).
+          {/if}
         </p>
       {:else if solverResult.determinacy === 'unstable'}
-        <p class="text-danger font-semibold">Unstable System</p>
+        <p class="text-danger font-semibold">{$locale === 'id' ? 'Sistem Labil (Unstable)' : 'Unstable System'}</p>
         <p class="text-sm text-secondary">
-          The system cannot be solved because it is structurally unstable (either too few supports, or supports are arranged in a way that allows motion). 
-          Review the diagnostics warnings in the Feedback Panel to stabilize the system.
+          {#if $locale === 'id'}
+            Sistem tidak dapat diselesaikan karena tidak stabil secara struktural (tumpuan terlalu sedikit, atau susunannya memungkinkan gerakan).
+            Tinjau peringatan diagnostik di Panel Umpan Balik untuk menstabilkan sistem.
+          {:else}
+            The system cannot be solved because it is structurally unstable (either too few supports, or supports are arranged in a way that allows motion). 
+            Review the diagnostics warnings in the Feedback Panel to stabilize the system.
+          {/if}
         </p>
       {:else}
-        <p class="text-secondary">Waiting for a stable support layout to solve reactions...</p>
+        <p class="text-secondary">
+          {$locale === 'id' ? 'Menunggu susunan tumpuan yang stabil untuk menghitung reaksi...' : 'Waiting for a stable support layout to solve reactions...'}
+        </p>
       {/if}
     </div>
   {/if}
@@ -160,7 +193,7 @@
     background-color: var(--bg-primary);
     border-radius: 4px;
     overflow-x: auto;
-    white-space: pre;
+    white-space: pre-wrap;
     color: var(--text-primary);
   }
 

@@ -4,7 +4,9 @@ export const starterProblems: ProblemModel[] = [
   {
     id: 'prob-simply-supported-beam',
     title: 'Problem 1: Simply Supported Beam with Point Load',
+    titleId: 'Soal 1: Balok Tumpuan Sederhana dengan Beban Terpusat',
     description: 'A 6-meter long horizontal beam is supported by a pin support at the left end (A) and a roller support at the right end (B). A vertical downward force of 600 N is applied at 4 meters from the left end.',
+    descriptionId: 'Sebuah balok horizontal sepanjang 6 meter ditumpu oleh tumpuan sendi di ujung kiri (A) dan tumpuan rol di ujung kanan (B). Gaya vertikal ke bawah sebesar 600 N diterapkan pada jarak 4 meter dari ujung kiri.',
     body: {
       id: 'body-simply-supported',
       type: 'beam',
@@ -45,11 +47,18 @@ export const starterProblems: ProblemModel[] = [
       'Sum the moments about support A (x=0) to solve for R_By directly.',
       'Use Sum Fy = 0 to solve for R_Ay and Sum Fx = 0 to solve for R_Ax.',
     ],
+    hintsId: [
+      'Ingat bahwa tumpuan sendi memberikan 2 reaksi (R_Ax, R_Ay) dan tumpuan rol memberikan 1 reaksi vertikal (R_By).',
+      'Jumlahkan momen di sekitar tumpuan A (x=0) untuk menghitung R_By secara langsung.',
+      'Gunakan ΣFy = 0 untuk menghitung R_Ay dan ΣFx = 0 untuk menghitung R_Ax.',
+    ],
   },
   {
     id: 'prob-cantilever-beam',
     title: 'Problem 2: Cantilever Beam with Uniformly Distributed Load',
+    titleId: 'Soal 2: Balok Kantilever dengan Beban Merata',
     description: 'A 4-meter long cantilever beam is fixed at the left end (A). It carries a uniformly distributed load of 200 N/m starting at 1 meter from the support and extending to the free end (4m).',
+    descriptionId: 'Sebuah balok kantilever sepanjang 4 meter dijepit di ujung kiri (A). Balok ini memikul beban merata sebesar 200 N/m mulai dari jarak 1 meter dari tumpuan hingga ujung bebas (4m).',
     body: {
       id: 'body-cantilever',
       type: 'beam',
@@ -86,11 +95,19 @@ export const starterProblems: ProblemModel[] = [
       'The equivalent force acts at the centroid of the distributed load, which is at x = 1m + (3m / 2) = 2.5m.',
       'Calculate the reaction moment M_A by summing moments about point A.',
     ],
+    hintsId: [
+      'Tumpuan jepit memberikan 3 reaksi: gaya horizontal (R_Ax), gaya vertikal (R_Ay), dan momen (M_A).',
+      'Gantikan beban merata dengan gaya terpusat ekivalennya: W = w * L = 200 N/m * 3 m = 600 N.',
+      'Gaya ekivalen tersebut bekerja pada pusat berat beban merata, yaitu pada x = 1m + (3m / 2) = 2.5m.',
+      'Hitung momen reaksi M_A dengan menjumlahkan momen di sekitar titik A.',
+    ],
   },
   {
     id: 'prob-indeterminate-beam',
     title: 'Problem 3: Continuous Beam (Statically Indeterminate)',
+    titleId: 'Soal 3: Balok Menerus (Statis Tak Tentu)',
     description: 'An 8-meter long beam is supported by a pin support at the left end (A), a roller in the middle (B) at 4 meters, and another roller at the right end (C) at 8 meters. A vertical load is applied.',
+    descriptionId: 'Sebuah balok sepanjang 8 meter ditumpu oleh tumpuan sendi di ujung kiri (A), tumpuan rol di tengah (B) pada jarak 4 meter, dan tumpuan rol lainnya di ujung kanan (C) pada jarak 8 meter. Beban vertikal diterapkan.',
     body: {
       id: 'body-indeterminate',
       type: 'beam',
@@ -138,11 +155,18 @@ export const starterProblems: ProblemModel[] = [
       'Since we only have 3 equations of equilibrium in 2D, we have 4 - 3 = 1 redundant constraint.',
       'This system cannot be solved using statics alone. We need deformation equations to determine the reactions.',
     ],
+    hintsId: [
+      'Hitung reaksi tumpuan yang tidak diketahui: Sendi A memiliki 2 reaksi, Rol B memiliki 1 reaksi, Rol C memiliki 1 reaksi, total ada 4 reaksi.',
+      'Karena kita hanya memiliki 3 persamaan kesetimbangan dalam 2D, kita memiliki 4 - 3 = 1 batasan redundan.',
+      'Sistem ini tidak dapat diselesaikan dengan statika saja. Kita perlu persamaan deformasi untuk menentukan reaksinya.',
+    ],
   },
   {
     id: 'prob-unstable-parallel',
     title: 'Problem 4: Geometrically Unstable Roller Assembly',
+    titleId: 'Soal 4: Susunan Rol yang Labil Secara Geometris',
     description: 'A 6-meter long beam is supported by three vertical roller supports at x=0 (A), x=3 (B), and x=6 (C). All three rollers roll on horizontal tracks, so they only produce vertical reaction forces.',
+    descriptionId: 'Sebuah balok sepanjang 6 meter ditumpu oleh tiga tumpuan rol vertikal pada x=0 (A), x=3 (B), dan x=6 (C). Ketiga rol menggelinding pada lintasan horizontal, sehingga hanya menghasilkan gaya reaksi vertikal.',
     body: {
       id: 'body-unstable',
       type: 'beam',
@@ -190,6 +214,12 @@ export const starterProblems: ProblemModel[] = [
       'However, all reaction forces act vertically. There is NO reaction force that can balance a horizontal load.',
       'The diagonal force F_wind has a horizontal component pushing to the left. The beam will accelerate to the left.',
       'This is a classic case of geometric instability due to parallel reaction lines of action.',
+    ],
+    hintsId: [
+      'Perhatikan bahwa ada 3 gaya reaksi (R_Ay, R_By, R_Cy), yang sama dengan jumlah 3 persamaan kesetimbangan.',
+      'Namun, semua gaya reaksi bekerja secara vertikal. Tidak ada gaya reaksi yang dapat menyeimbangkan beban horizontal.',
+      'Gaya diagonal F_wind memiliki komponen horizontal yang mendorong ke kiri. Balok akan bergerak ke kiri.',
+      'Ini adalah contoh klasik ketidakstabilan geometris karena garis kerja reaksi yang sejajar.',
     ],
   }
 ];

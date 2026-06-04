@@ -2,6 +2,7 @@
   import { staticsTopics } from '../../content/topics/statics-content';
   import { starterProblems } from '../../content/problems/statics-problems';
   import type { ProblemModel } from '../../lib/domain/models/types';
+  import { locale, translations } from '../../lib/utils/i18n';
 
   export let onNavigate: (page: string, params?: any) => void;
 
@@ -13,27 +14,27 @@
 <div class="dashboard-container animate-fade-in">
   <header class="dashboard-header">
     <div class="header-text">
-      <span class="subheading">Undergraduate Engineering Mechanics</span>
-      <h1>Statics Learning Portal</h1>
+      <span class="subheading">{translations[$locale].undergradMechanics}</span>
+      <h1>{translations[$locale].learningPortal}</h1>
       <p class="description">
-        Learn the fundamentals of rigid-body equilibrium, boundary support reactions, and free-body diagramming (FBD).
+        {translations[$locale].portalDesc}
       </p>
     </div>
     <div class="header-action">
       <button class="btn btn-primary btn-lg" on:click={() => onNavigate('practice')}>
-        Open Free Sandbox FBD Builder
+        {translations[$locale].openSandbox}
       </button>
     </div>
   </header>
 
   <div class="dashboard-grid">
-    <!-- Left Column: Core Curriculum (Stage 0) -->
+    <!-- Left Column: Core Curriculum -->
     <div class="grid-section">
       <div class="section-header">
         <span class="icon">📘</span>
-        <h2>1. Concept Modules</h2>
+        <h2>{translations[$locale].conceptModules}</h2>
       </div>
-      <p class="section-desc">Study the theoretical foundation of 2D rigid-body statics.</p>
+      <p class="section-desc">{translations[$locale].conceptDesc}</p>
       
       <div class="topics-list">
         {#each staticsTopics as topic}
@@ -43,8 +44,8 @@
             on:click={() => onNavigate(`concept/${topic.id}`)}
           >
             <div class="topic-info">
-              <h3>{topic.title}</h3>
-              <p>{topic.summary}</p>
+              <h3>{$locale === 'id' ? topic.titleId || topic.title : topic.title}</h3>
+              <p>{$locale === 'id' ? topic.summaryId || topic.summary : topic.summary}</p>
             </div>
             <span class="arrow">→</span>
           </div>
@@ -52,13 +53,13 @@
       </div>
     </div>
 
-    <!-- Right Column: Interactive Practice Presets (Stage 1) -->
+    <!-- Right Column: Interactive Practice Presets -->
     <div class="grid-section">
       <div class="section-header">
         <span class="icon">📐</span>
-        <h2>2. Practice Problems</h2>
+        <h2>{translations[$locale].practiceProblems}</h2>
       </div>
-      <p class="section-desc">Load preset problems into the interactive FBD builder to verify supports, loads, and reactions.</p>
+      <p class="section-desc">{translations[$locale].practiceDesc}</p>
 
       <div class="problems-list">
         {#each starterProblems as problem}
@@ -68,14 +69,20 @@
             on:click={() => loadProblem(problem)}
           >
             <div class="problem-badge {problem.expectedDeterminacy}">
-              {problem.expectedDeterminacy === 'statically_determinate' ? 'Determinate' : (problem.expectedDeterminacy === 'statically_indeterminate' ? 'Indeterminate' : 'Unstable')}
+              {#if problem.expectedDeterminacy === 'statically_determinate'}
+                {translations[$locale].determinate}
+              {:else if problem.expectedDeterminacy === 'statically_indeterminate'}
+                {translations[$locale].indeterminate}
+              {:else}
+                {translations[$locale].unstable}
+              {/if}
             </div>
-            <h3>{problem.title}</h3>
-            <p>{problem.description}</p>
+            <h3>{$locale === 'id' ? problem.titleId || problem.title : problem.title}</h3>
+            <p>{$locale === 'id' ? problem.descriptionId || problem.description : problem.description}</p>
             <div class="problem-meta">
-              <span>Body: {problem.body.type} ({problem.body.width}m)</span>
+              <span>{translations[$locale].body}: {problem.body.type === 'beam' ? ($locale === 'id' ? 'Balok' : 'Beam') : ($locale === 'id' ? 'Plat' : 'Block')} ({problem.body.width}m)</span>
               <span>•</span>
-              <span>Supports: {problem.supports.length}</span>
+              <span>{translations[$locale].supports}: {problem.supports.length}</span>
             </div>
           </div>
         {/each}
@@ -144,6 +151,7 @@
     border: none;
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    white-space: nowrap;
   }
 
   .btn-lg:hover {
@@ -282,7 +290,7 @@
 
   .problem-card h3 {
     font-size: 1rem;
-    margin-right: 5rem;
+    margin-right: 6.5rem;
     margin-bottom: 0.4rem;
   }
 

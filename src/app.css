@@ -51,6 +51,24 @@
   }
 }
 
+:root.dark, html.dark {
+  color: #e2e8f0;
+  background-color: #0f172a;
+
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --border-color: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  
+  --color-force: #f87171;
+  --color-reaction: #818cf8;
+  --color-body: #64748b;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

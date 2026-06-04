@@ -7,6 +7,7 @@
   import FbdCanvas from '../../lib/ui/FbdCanvas.svelte';
   import FeedbackPanel from '../../lib/ui/FeedbackPanel.svelte';
   import EquationsView from '../../lib/ui/EquationsView.svelte';
+  import { locale, translations } from '../../lib/utils/i18n';
 
   export let initialProblemId: string | null = null;
   export let onNavigate: (page: string, params?: any) => void;
@@ -64,7 +65,7 @@
       } as Load]
     : loads;
 
-  $: validation = checkFbdModel(body, supports, activeLoads);
+  $: validation = checkFbdModel(body, supports, activeLoads, $locale);
   $: solverResult = solveEquilibrium(body, supports, activeLoads);
 
   // 5. Lifecycle hook: load initial problem if requested
@@ -273,28 +274,28 @@
     <div class="toolbar-left">
       <!-- svelte-ignore a11y-invalid-attribute -->
       <a href="#" class="back-link" on:click|preventDefault={() => onNavigate('dashboard')}>
-        ← Dashboard
+        ← {translations[$locale].dashboard}
       </a>
-      <h2>Interactive FBD Sandbox</h2>
+      <h2>{translations[$locale].interactiveSandbox}</h2>
     </div>
     
     <div class="toolbar-right">
       <div class="problem-loader">
-        <label for="problem-preset">Preset Problem:</label>
+        <label for="problem-preset">{translations[$locale].presetProblem}</label>
         <select 
           id="problem-preset" 
           class="form-control select-preset"
           value={problemDropdownValue}
           on:change={handleProblemChange}
         >
-          <option value="custom">-- Custom Sandbox (Clear) --</option>
+          <option value="custom">{translations[$locale].customSandbox}</option>
           {#each starterProblems as prob}
-            <option value={prob.id}>{prob.title}</option>
+            <option value={prob.id}>{$locale === 'id' ? prob.titleId || prob.title : prob.title}</option>
           {/each}
         </select>
       </div>
 
-      <button class="btn btn-secondary" on:click={clearAll}>Reset Diagram</button>
+      <button class="btn btn-secondary" on:click={clearAll}>{translations[$locale].resetDiagram}</button>
     </div>
   </div>
 
@@ -307,10 +308,21 @@
         {@const loadedProb = starterProblems.find(p => p.id === problemDropdownValue)}
         {#if loadedProb}
           <div class="problem-info-banner">
-            <strong>Target Goal:</strong> {loadedProb.description}
+            <div>
+              <strong>{translations[$locale].targetGoal}</strong> 
+              {$locale === 'id' ? loadedProb.descriptionId || loadedProb.description : loadedProb.description}
+            </div>
             <div class="hint-toggle-wrapper">
-              <strong>Expected:</strong> 
-              <span class="badge badge-expected">{loadedProb.expectedDeterminacy.replace('_', ' ')}</span>
+              <strong>{translations[$locale].expected}</strong> 
+              <span class="badge badge-expected">
+                {#if loadedProb.expectedDeterminacy === 'statically_determinate'}
+                  {translations[$locale].determinate}
+                {:else if loadedProb.expectedDeterminacy === 'statically_indeterminate'}
+                  {translations[$locale].indeterminate}
+                {:else}
+                  {translations[$locale].unstable}
+                {/if}
+              </span>
             </div>
           </div>
         {/if}
@@ -319,15 +331,15 @@
       <!-- Visual Canvas Card -->
       <div class="canvas-card">
         <div class="canvas-header">
-          <div class="canvas-title">Free-Body Diagram Canvas</div>
+          <div class="canvas-title">{translations[$locale].canvasTitle}</div>
           <div class="canvas-options">
             <label class="toggle-control">
               <input type="checkbox" bind:checked={showLabels} />
-              <span>Show Labels</span>
+              <span>{translations[$locale].showLabels}</span>
             </label>
             <label class="toggle-control">
               <input type="checkbox" bind:checked={showReactions} />
-              <span>Show Reactions</span>
+              <span>{translations[$locale].showReactions}</span>
             </label>
           </div>
         </div>
@@ -360,20 +372,20 @@
         />
         
         <div class="canvas-instruction">
-          💡 <em>Tip: You can click anywhere on the grey body to pick coordinates while creating elements.</em>
+          💡 <em>{translations[$locale].canvasTip}</em>
         </div>
       </div>
 
       <!-- Action Palette Buttons -->
       <div class="palette-bar">
         <button class="btn btn-secondary" on:click={openBodySettings}>
-          📦 Edit Body Properties
+          📦 {translations[$locale].editBodyProps}
         </button>
         <button class="btn btn-primary" on:click={openAddSupportForm}>
-          ➕ Add Support Reactions
+          ➕ {translations[$locale].addSupport}
         </button>
         <button class="btn btn-primary" on:click={openAddLoadForm}>
-          💥 Add Applied Load
+          💥 {translations[$locale].addAppliedLoad}
         </button>
       </div>
 
@@ -381,76 +393,76 @@
       {#if inputMode !== 'none' || selectedItemId}
         <div class="inspector-card animate-fade-in">
           {#if inputMode === 'body'}
-            <h3>Edit Rigid Body Dimensions</h3>
+            <h3>{translations[$locale].editBodyDimensions}</h3>
             <div class="form-row">
               <div class="form-group">
-                <label for="body-type">Type</label>
+                <label for="body-type">{translations[$locale].bodyType}</label>
                 <select id="body-type" class="form-control" bind:value={body.type}>
-                  <option value="beam">Beam (Linear)</option>
-                  <option value="block">Block (Planar)</option>
+                  <option value="beam">{translations[$locale].beamLinear}</option>
+                  <option value="block">{translations[$locale].blockPlanar}</option>
                 </select>
               </div>
               <div class="form-group">
-                <label for="body-w">Width (Length, m)</label>
+                <label for="body-w">{translations[$locale].widthLength}</label>
                 <input id="body-w" type="number" min="1" max="15" step="0.5" class="form-control" bind:value={body.width} />
               </div>
               <div class="form-group">
-                <label for="body-h">Height (m)</label>
+                <label for="body-h">{translations[$locale].height}</label>
                 <input id="body-h" type="number" min="0.1" max="5" step="0.1" class="form-control" bind:value={body.height} />
               </div>
               <div class="form-group">
-                <label for="body-wt">Self-Weight (N)</label>
+                <label for="body-wt">{translations[$locale].selfWeight}</label>
                 <input id="body-wt" type="number" min="0" max="1000" step="10" class="form-control" bind:value={body.weight} />
               </div>
             </div>
             <div class="form-actions">
-              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>Close</button>
+              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>{translations[$locale].close}</button>
             </div>
 
           {:else if inputMode === 'add_support'}
-            <h3>Add Boundary Support Constraint</h3>
+            <h3>{translations[$locale].addSupportConstraint}</h3>
             <div class="form-row">
               <div class="form-group">
-                <label for="supp-type">Support Type</label>
+                <label for="supp-type">{translations[$locale].supportType}</label>
                 <select id="supp-type" class="form-control" bind:value={suppType}>
-                  <option value="pin">Pin Support (2 Reactions: Rx, Ry)</option>
-                  <option value="roller">Roller Support (1 Reaction: Rn)</option>
-                  <option value="fixed">Fixed Joint (3 Reactions: Rx, Ry, M)</option>
+                  <option value="pin">{translations[$locale].pinSupport}</option>
+                  <option value="roller">{translations[$locale].rollerSupport}</option>
+                  <option value="fixed">{translations[$locale].fixedJoint}</option>
                 </select>
               </div>
               <div class="form-group">
-                <label for="supp-x">Position X (0 to {body.width}m)</label>
+                <label for="supp-x">{translations[$locale].positionX} (0 to {body.width}m)</label>
                 <input id="supp-x" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={suppX} />
               </div>
               <div class="form-group">
-                <label for="supp-lbl">Label Prefix</label>
+                <label for="supp-lbl">{translations[$locale].labelPrefix}</label>
                 <input id="supp-lbl" type="text" maxlength="2" class="form-control" bind:value={suppLabel} />
               </div>
               {#if suppType === 'roller'}
                 <div class="form-group">
-                  <label for="supp-ang">Roller Inclination (°)</label>
+                  <label for="supp-ang">{translations[$locale].rollerIncline}</label>
                   <input id="supp-ang" type="number" min="0" max="360" step="15" class="form-control" bind:value={suppAngle} />
                 </div>
               {/if}
             </div>
             <div class="form-actions">
-              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>Cancel</button>
-              <button class="btn btn-primary" on:click={saveNewSupport}>Save Support</button>
+              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>{translations[$locale].cancel}</button>
+              <button class="btn btn-primary" on:click={saveNewSupport}>{translations[$locale].saveSupport}</button>
             </div>
 
           {:else if inputMode === 'add_load'}
-            <h3>Add External Applied Load</h3>
+            <h3>{translations[$locale].addExternalLoad}</h3>
             <div class="form-row">
               <div class="form-group">
-                <label for="load-type">Load Type</label>
+                <label for="load-type">{translations[$locale].loadType}</label>
                 <select id="load-type" class="form-control" bind:value={loadType} on:change={handleLoadTypeChange}>
-                  <option value="point_force">Point Force (Concentrated Load)</option>
-                  <option value="applied_moment">Applied Couple / Moment</option>
-                  <option value="distributed_load">Uniform Distributed Load (UDL)</option>
+                  <option value="point_force">{translations[$locale].pointForce}</option>
+                  <option value="applied_moment">{translations[$locale].appliedMoment}</option>
+                  <option value="distributed_load">{translations[$locale].distributedLoad}</option>
                 </select>
               </div>
               <div class="form-group">
-                <label for="load-lbl">Label</label>
+                <label for="load-lbl">{translations[$locale].label}</label>
                 <input id="load-lbl" type="text" class="form-control" bind:value={loadLabel} />
               </div>
             </div>
@@ -458,16 +470,18 @@
             {#if loadType === 'point_force' || loadType === 'applied_moment'}
               <div class="form-row">
                 <div class="form-group">
-                  <label for="load-x">Position X (0 to {body.width}m)</label>
+                  <label for="load-x">{translations[$locale].positionX} (0 to {body.width}m)</label>
                   <input id="load-x" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={loadX} />
                 </div>
                 <div class="form-group">
-                  <label for="load-mag">{loadType === 'point_force' ? 'Force Magnitude (N)' : 'Moment Magnitude (N·m, +CCW / -CW)'}</label>
+                  <label for="load-mag">
+                    {loadType === 'point_force' ? translations[$locale].forceMag : translations[$locale].momentMag}
+                  </label>
                   <input id="load-mag" type="number" step="10" class="form-control" bind:value={loadMag} />
                 </div>
                 {#if loadType === 'point_force'}
                   <div class="form-group">
-                    <label for="load-ang">Force Direction Angle (°, CCW from +x)</label>
+                    <label for="load-ang">{translations[$locale].forceAngle}</label>
                     <input id="load-ang" type="number" min="0" max="360" step="15" class="form-control" bind:value={loadAngle} />
                   </div>
                 {/if}
@@ -476,27 +490,27 @@
               <!-- Distributed Load specific controls -->
               <div class="form-row">
                 <div class="form-group">
-                  <label for="dist-x1">Start X (m)</label>
+                  <label for="dist-x1">{translations[$locale].startX}</label>
                   <input id="dist-x1" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={distStartX} />
                 </div>
                 <div class="form-group">
-                  <label for="dist-x2">End X (m)</label>
+                  <label for="dist-x2">{translations[$locale].endX}</label>
                   <input id="dist-x2" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={distEndX} />
                 </div>
                 <div class="form-group">
-                  <label for="dist-w1">Load Start Magnitude (N/m)</label>
+                  <label for="dist-w1">{translations[$locale].loadStartMag}</label>
                   <input id="dist-w1" type="number" min="0" step="10" class="form-control" bind:value={distMagStart} />
                 </div>
                 <div class="form-group">
-                  <label for="dist-w2">Load End Magnitude (N/m)</label>
+                  <label for="dist-w2">{translations[$locale].loadEndMag}</label>
                   <input id="dist-w2" type="number" min="0" step="10" class="form-control" bind:value={distMagEnd} />
                 </div>
               </div>
             {/if}
             
             <div class="form-actions">
-              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>Cancel</button>
-              <button class="btn btn-primary" on:click={saveNewLoad}>Apply Load</button>
+              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>{translations[$locale].cancel}</button>
+              <button class="btn btn-primary" on:click={saveNewLoad}>{translations[$locale].applyLoad}</button>
             </div>
 
           {:else if selectedItemId}
@@ -505,33 +519,33 @@
             {@const selectedLoad = loads.find(l => l.id === selectedItemId)}
             
             <div class="inspector-item-header">
-              <h3>Element Inspector</h3>
+              <h3>{translations[$locale].elementInspector}</h3>
               <button class="btn btn-danger btn-sm" on:click={deleteSelectedItem}>
-                🗑️ Delete Element
+                🗑️ {translations[$locale].deleteElement}
               </button>
             </div>
 
             {#if selectedSupport}
               <div class="form-row">
                 <div class="form-group">
-                  <label for="edit-supp-type">Support Type</label>
+                  <label for="edit-supp-type">{translations[$locale].supportType}</label>
                   <select id="edit-supp-type" class="form-control" bind:value={selectedSupport.type}>
-                    <option value="pin">Pin</option>
+                    <option value="pin">{$locale === 'id' ? 'Sendi' : 'Pin'}</option>
                     <option value="roller">Roller</option>
-                    <option value="fixed">Fixed</option>
+                    <option value="fixed">{$locale === 'id' ? 'Jepit' : 'Fixed'}</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="edit-supp-x">Position X (m)</label>
+                  <label for="edit-supp-x">{translations[$locale].positionX} (m)</label>
                   <input id="edit-supp-x" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={selectedSupport.position.x} />
                 </div>
                 <div class="form-group">
-                  <label for="edit-supp-lbl">Label</label>
+                  <label for="edit-supp-lbl">{translations[$locale].label}</label>
                   <input id="edit-supp-lbl" type="text" class="form-control" bind:value={selectedSupport.label} />
                 </div>
                 {#if selectedSupport.type === 'roller'}
                   <div class="form-group">
-                    <label for="edit-supp-ang">Roller Angle (°)</label>
+                    <label for="edit-supp-ang">{translations[$locale].rollerIncline}</label>
                     <input id="edit-supp-ang" type="number" class="form-control" bind:value={selectedSupport.angle} />
                   </div>
                 {/if}
@@ -540,64 +554,64 @@
               {#if selectedLoad.type === 'point_force'}
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="edit-load-lbl">Label</label>
+                    <label for="edit-load-lbl">{translations[$locale].label}</label>
                     <input id="edit-load-lbl" type="text" class="form-control" bind:value={selectedLoad.label} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-load-x">Position X (m)</label>
+                    <label for="edit-load-x">{translations[$locale].positionX} (m)</label>
                     <input id="edit-load-x" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={selectedLoad.position.x} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-load-mag">Force Magnitude (N)</label>
+                    <label for="edit-load-mag">{translations[$locale].forceMag}</label>
                     <input id="edit-load-mag" type="number" class="form-control" bind:value={selectedLoad.magnitude} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-load-ang">Angle (°)</label>
+                    <label for="edit-load-ang">{translations[$locale].forceAngle}</label>
                     <input id="edit-load-ang" type="number" class="form-control" bind:value={selectedLoad.angle} />
                   </div>
                 </div>
               {:else if selectedLoad.type === 'applied_moment'}
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="edit-load-lbl">Label</label>
+                    <label for="edit-load-lbl">{translations[$locale].label}</label>
                     <input id="edit-load-lbl" type="text" class="form-control" bind:value={selectedLoad.label} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-load-x">Position X (m)</label>
+                    <label for="edit-load-x">{translations[$locale].positionX} (m)</label>
                     <input id="edit-load-x" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={selectedLoad.position.x} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-load-mag">Moment (N·m)</label>
+                    <label for="edit-load-mag">{translations[$locale].momentMag}</label>
                     <input id="edit-load-mag" type="number" class="form-control" bind:value={selectedLoad.magnitude} />
                   </div>
                 </div>
               {:else if selectedLoad.type === 'distributed_load'}
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="edit-load-lbl">Label</label>
+                    <label for="edit-load-lbl">{translations[$locale].label}</label>
                     <input id="edit-load-lbl" type="text" class="form-control" bind:value={selectedLoad.label} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-dist-x1">Start X (m)</label>
+                    <label for="edit-dist-x1">{translations[$locale].startX}</label>
                     <input id="edit-dist-x1" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={selectedLoad.startPosition.x} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-dist-x2">End X (m)</label>
+                    <label for="edit-dist-x2">{translations[$locale].endX}</label>
                     <input id="edit-dist-x2" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={selectedLoad.endPosition.x} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-dist-w1">Start Mag (N/m)</label>
+                    <label for="edit-dist-w1">{translations[$locale].loadStartMag}</label>
                     <input id="edit-dist-w1" type="number" class="form-control" bind:value={selectedLoad.magnitudeStart} />
                   </div>
                   <div class="form-group">
-                    <label for="edit-dist-w2">End Mag (N/m)</label>
+                    <label for="edit-dist-w2">{translations[$locale].loadEndMag}</label>
                     <input id="edit-dist-w2" type="number" class="form-control" bind:value={selectedLoad.magnitudeEnd} />
                   </div>
                 </div>
               {/if}
             {/if}
             <div class="form-actions">
-              <button class="btn btn-secondary" on:click={() => selectedItemId = null}>Deselect</button>
+              <button class="btn btn-secondary" on:click={() => selectedItemId = null}>{translations[$locale].deselect}</button>
             </div>
           {/if}
         </div>
@@ -608,9 +622,9 @@
         {@const currProb = starterProblems.find(p => p.id === problemDropdownValue)}
         {#if currProb}
           <div class="hints-card card">
-            <h4>💡 Solving Hints</h4>
+            <h4>💡 {translations[$locale].solvingHints}</h4>
             <ul>
-              {#each currProb.hints as hint}
+              {#each ($locale === 'id' ? currProb.hintsId || currProb.hints : currProb.hints) as hint}
                 <li>{hint}</li>
               {/each}
             </ul>

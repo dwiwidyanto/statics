@@ -1,11 +1,14 @@
 <script lang="ts">
   import { staticsTopics } from '../../content/topics/statics-content';
+  import { locale, translations } from '../../lib/utils/i18n';
 
   export let topicId: string;
   export let onNavigate: (page: string, params?: any) => void;
 
   $: topic = staticsTopics.find(t => t.id === topicId);
-  $: htmlContent = topic ? parseMarkdown(topic.contentMarkdown) : '';
+  $: htmlContent = topic 
+    ? parseMarkdown($locale === 'id' ? topic.contentMarkdownId || topic.contentMarkdown : topic.contentMarkdown) 
+    : '';
 
   function parseMarkdown(md: string): string {
     const lines = md.split('\n');
@@ -133,31 +136,29 @@
     return res;
   }
 
-  function getPrevTopicId() {
+  // Reactively calculate prev/next IDs when topicId changes
+  $: prevId = (() => {
     const idx = staticsTopics.findIndex(t => t.id === topicId);
     return idx > 0 ? staticsTopics[idx - 1].id : null;
-  }
+  })();
 
-  function getNextTopicId() {
+  $: nextId = (() => {
     const idx = staticsTopics.findIndex(t => t.id === topicId);
     return idx < staticsTopics.length - 1 ? staticsTopics[idx + 1].id : null;
-  }
-
-  $: prevId = getPrevTopicId();
-  $: nextId = getNextTopicId();
+  })();
 </script>
 
 <div class="concept-container">
   <div class="navigation-crumbs">
     <!-- svelte-ignore a11y-invalid-attribute -->
-    <a href="#" on:click|preventDefault={() => onNavigate('dashboard')}>Dashboard</a>
+    <a href="#" on:click|preventDefault={() => onNavigate('dashboard')}>{translations[$locale].dashboard}</a>
     <span class="separator">/</span>
-    <span class="current">Concept Page</span>
+    <span class="current">{translations[$locale].conceptLibrary}</span>
   </div>
 
   {#if topic}
     <article class="concept-article">
-      <h1>{topic.title}</h1>
+      <h1>{$locale === 'id' ? topic.titleId || topic.title : topic.title}</h1>
       <div class="content-body">
         {@html htmlContent}
       </div>
@@ -166,19 +167,19 @@
     <footer class="concept-footer">
       {#if prevId}
         <button class="btn btn-secondary" on:click={() => onNavigate(`concept/${prevId}`)}>
-          ← Previous Section
+          ← {$locale === 'id' ? 'Bagian Sebelumnya' : 'Previous Section'}
         </button>
       {:else}
         <div></div>
       {/if}
 
       <button class="btn btn-primary" on:click={() => onNavigate('practice')}>
-        Practice in Sandbox
+        {$locale === 'id' ? 'Latihan di Sandbox' : 'Practice in Sandbox'}
       </button>
 
       {#if nextId}
         <button class="btn btn-secondary" on:click={() => onNavigate(`concept/${nextId}`)}>
-          Next Section →
+          {$locale === 'id' ? 'Bagian Selanjutnya' : 'Next Section'} →
         </button>
       {:else}
         <div></div>
@@ -186,9 +187,11 @@
     </footer>
   {:else}
     <div class="card error-card">
-      <h2>Concept Page Not Found</h2>
-      <p>The requested topic section does not exist.</p>
-      <button class="btn btn-primary" on:click={() => onNavigate('dashboard')}>Return to Dashboard</button>
+      <h2>{$locale === 'id' ? 'Halaman Konsep Tidak Ditemukan' : 'Concept Page Not Found'}</h2>
+      <p>{$locale === 'id' ? 'Materi topik yang diminta tidak tersedia.' : 'The requested topic section does not exist.'}</p>
+      <button class="btn btn-primary" on:click={() => onNavigate('dashboard')}>
+        {$locale === 'id' ? 'Kembali ke Dasbor' : 'Return to Dashboard'}
+      </button>
     </div>
   {/if}
 </div>
