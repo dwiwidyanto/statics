@@ -6,7 +6,9 @@ import type {
   EquationTerm, 
   SolverResult, 
   Point, 
-  RigidBody
+  RigidBody,
+  DeterminacyClassification,
+  StabilityClassification
 } from '../models/types';
 import { getReactionsForSupport } from '../supports/support';
 import { getLoadForceComponents, getDistributedLoadResultant } from '../loads/load';

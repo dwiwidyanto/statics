@@ -3,6 +3,7 @@
   import Dashboard from './app/pages/Dashboard.svelte';
   import ConceptPage from './app/pages/ConceptPage.svelte';
   import PracticePage from './app/pages/PracticePage.svelte';
+  import GuidedWorkspace from './app/pages/GuidedWorkspace.svelte';
 
   // Routing State
   let currentPage = 'dashboard';
@@ -19,6 +20,8 @@
   // Parse path out of current page string
   $: isConcept = currentPage.startsWith('concept/');
   $: activeTopicId = isConcept ? currentPage.substring(8) : null;
+  $: isGuided = currentPage.startsWith('guided/');
+  $: activeGuidedProblemId = isGuided ? currentPage.substring(7) : null;
 </script>
 
 <AppShell 
@@ -38,6 +41,11 @@
       <!-- We load the practice page, optionally passing a problemId parameter if it was sent -->
       <PracticePage 
         initialProblemId={currentPageParams.problemId || null} 
+        onNavigate={navigate}
+      />
+    {:else if isGuided}
+      <GuidedWorkspace 
+        problemId={activeGuidedProblemId || ''} 
         onNavigate={navigate}
       />
     {:else}

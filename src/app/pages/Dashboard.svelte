@@ -1,6 +1,7 @@
 <script lang="ts">
   import { staticsTopics } from '../../content/topics/statics-content';
   import { starterProblems } from '../../content/problems/statics-problems';
+  import { beamProblems } from '../../content/problems/beam-problems';
   import type { ProblemModel } from '../../lib/domain/models/types';
   import { locale, translations } from '../../lib/utils/i18n';
 
@@ -8,6 +9,10 @@
 
   function loadProblem(problem: ProblemModel) {
     onNavigate('practice', { problemId: problem.id });
+  }
+
+  function loadGuidedProblem(problem: ProblemModel) {
+    onNavigate(`guided/${problem.id}`);
   }
 </script>
 
@@ -53,6 +58,36 @@
       </div>
     </div>
 
+    <!-- Middle Column: Guided Beam Problems -->
+    <div class="grid-section">
+      <div class="section-header">
+        <span class="icon">📝</span>
+        <h2>{translations[$locale].guidedWorkspace}</h2>
+      </div>
+      <p class="section-desc">{translations[$locale].guidedDesc}</p>
+
+      <div class="problems-list">
+        {#each beamProblems as problem}
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <div 
+            class="problem-card"
+            on:click={() => loadGuidedProblem(problem)}
+          >
+            <div class="problem-badge statically_determinate">
+              {$locale === 'id' ? 'Terpandu' : 'Guided'}
+            </div>
+            <h3>{$locale === 'id' ? problem.titleId || problem.title : problem.title}</h3>
+            <p>{$locale === 'id' ? problem.descriptionId || problem.description : problem.description}</p>
+            <div class="problem-meta">
+              <span>{translations[$locale].body}: {$locale === 'id' ? 'Balok' : 'Beam'} ({problem.body.width}m)</span>
+              <span>•</span>
+              <span>{$locale === 'id' ? 'Beban' : 'Beban'}: {problem.loads.length}</span>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
     <!-- Right Column: Interactive Practice Presets -->
     <div class="grid-section">
       <div class="section-header">
@@ -93,7 +128,7 @@
 
 <style>
   .dashboard-container {
-    max-width: 1100px;
+    max-width: 1200px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -165,9 +200,9 @@
     gap: 2rem;
   }
 
-  @media (min-width: 850px) {
+  @media (min-width: 960px) {
     .dashboard-grid {
-      grid-template-columns: 1.1fr 1fr;
+      grid-template-columns: 1fr 1.2fr 1fr;
     }
   }
 

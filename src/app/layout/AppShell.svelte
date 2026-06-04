@@ -1,5 +1,6 @@
 <script lang="ts">
   import { staticsTopics } from '../../content/topics/statics-content';
+  import { beamProblems } from '../../content/problems/beam-problems';
   import { locale, translations } from '../../lib/utils/i18n';
   
   export let currentPage: string;
@@ -78,6 +79,21 @@
         <span>{translations[$locale].homeWebsite}</span>
       </a>
 
+      <div class="nav-section-title">{translations[$locale].guidedWorkspace}</div>
+      {#each beamProblems as pb}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div 
+          class="nav-item concept-nav-item {currentPage === `guided/${pb.id}` ? 'active' : ''}"
+          on:click={() => onNavigate(`guided/${pb.id}`)}
+          title={$locale === 'id' ? pb.titleId || pb.title : pb.title}
+        >
+          <span class="nav-icon">📝</span>
+          <span class="truncate">
+            {$locale === 'id' ? (pb.titleId || pb.title).replace('Guided Problem ', '').replace('Soal Terpandu ', '') : pb.title.replace('Guided Problem ', '')}
+          </span>
+        </div>
+      {/each}
+
       <div class="nav-section-title">{translations[$locale].conceptLibrary}</div>
       {#each staticsTopics as topic}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -96,10 +112,6 @@
       <div class="nav-item disabled">
         <span class="nav-icon">🕸️</span>
         <span>Truss Solver <small class="coming-soon">{translations[$locale].comingSoon}</small></span>
-      </div>
-      <div class="nav-item disabled">
-        <span class="nav-icon">📈</span>
-        <span>Shear & Moment <small class="coming-soon">{translations[$locale].comingSoon}</small></span>
       </div>
     </nav>
 
