@@ -21,12 +21,21 @@
     for (let line of lines) {
       const trimmed = line.trim();
 
+      // Heading 4
+      if (trimmed.startsWith('####')) {
+        if (inList) { html += '</ul>'; inList = false; }
+        if (inAlert) { html += '</div>'; inAlert = false; }
+        if (inTable) { html += '</tbody></table></div>'; inTable = false; }
+        html += `<h4>${parseInline(trimmed.substring(4).trim())}</h4>`;
+        continue;
+      }
+
       // Heading 3
       if (trimmed.startsWith('###')) {
         if (inList) { html += '</ul>'; inList = false; }
         if (inAlert) { html += '</div>'; inAlert = false; }
         if (inTable) { html += '</tbody></table></div>'; inTable = false; }
-        html += `<h3>${trimmed.substring(3).trim()}</h3>`;
+        html += `<h3>${parseInline(trimmed.substring(3).trim())}</h3>`;
         continue;
       }
 
@@ -35,7 +44,7 @@
         if (inList) { html += '</ul>'; inList = false; }
         if (inAlert) { html += '</div>'; inAlert = false; }
         if (inTable) { html += '</tbody></table></div>'; inTable = false; }
-        html += `<h2>${trimmed.substring(2).trim()}</h2>`;
+        html += `<h2>${parseInline(trimmed.substring(2).trim())}</h2>`;
         continue;
       }
 
