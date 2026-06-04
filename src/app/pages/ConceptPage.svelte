@@ -157,6 +157,11 @@
     res = res.replace(/\\Sigma/g, 'Σ');
     res = res.replace(/\\cdot/g, '·');
     
+    // Inequalities & Comparison
+    res = res.replace(/\\ge(q)?/g, '≥');
+    res = res.replace(/\\le(q)?/g, '≤');
+    res = res.replace(/\\ne(q)?/g, '≠');
+    
     // Vector arrow: \vec{a} -> a with combining vector arrow (&#x20D7;)
     res = res.replace(/\\vec\{(.*?)\}/g, '$1&#x20D7;');
     
