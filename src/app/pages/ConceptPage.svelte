@@ -171,8 +171,8 @@
     res = res.replace(/\\le(q)?/g, '≤');
     res = res.replace(/\\ne(q)?/g, '≠');
     
-    // Vector arrow: \vec{a} -> a with combining vector arrow (&#x20D7;)
-    res = res.replace(/\\vec\{(.*?)\}/g, '$1&#x20D7;');
+    // Vector arrow: \vec{a} -> a with HTML class math-vector
+    res = res.replace(/\\vec\{(.*?)\}/g, '<span class="math-vector">$1</span>');
     
     // Functions
     res = res.replace(/\\cos/g, 'cos');
@@ -352,6 +352,24 @@
     border-radius: 6px;
     margin: 1rem 0;
     border: 1px solid var(--border-color);
+  }
+
+  :global(.math-vector) {
+    position: relative;
+    display: inline-block;
+    padding-top: 0.1em;
+    font-style: italic;
+  }
+  
+  :global(.math-vector::after) {
+    content: '→';
+    position: absolute;
+    top: -0.4em;
+    left: 50%;
+    transform: translateX(-50%) scale(0.65, 0.45);
+    font-size: 0.7em;
+    font-weight: bold;
+    font-family: sans-serif;
   }
 
   /* Alerts inside markdown rendering */
