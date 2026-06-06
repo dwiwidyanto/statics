@@ -6,7 +6,7 @@
  * migrations are possible without data loss.
  */
 
-import type { ProgressRepository } from './progressRepository';
+import type { ProgressRepository, AnyProblem } from './progressRepository';
 import type {
   Attempt,
   ProblemProgress,
@@ -15,7 +15,6 @@ import type {
   TopicStats,
 } from '../domain/progress/types';
 import { CURRENT_SCHEMA_VERSION } from '../domain/progress/types';
-import type { ProblemModel } from '../domain/models/types';
 
 const STORAGE_KEY = 'staticslab.progress.v1';
 
@@ -121,12 +120,12 @@ export class LocalProgressRepository implements ProgressRepository {
     };
   }
 
-  getSummary(allProblems: ProblemModel[]): ProgressSummary {
+  getSummary(allProblems: AnyProblem[]): ProgressSummary {
     const byTopic: Record<string, TopicStats> = {};
 
     // Initialize topic buckets from all problems
     for (const p of allProblems) {
-      const topic = (p as any).topic as string | undefined;
+      const topic = p.topic;
       if (topic && !byTopic[topic]) {
         byTopic[topic] = { total: 0, attempted: 0, completed: 0, averageBestScore: 0 };
       }
@@ -142,7 +141,7 @@ export class LocalProgressRepository implements ProgressRepository {
     const topicScores: Record<string, { sum: number; count: number }> = {};
 
     for (const p of allProblems) {
-      const topic = (p as any).topic as string | undefined;
+      const topic = p.topic;
       if (topic && byTopic[topic]) {
         byTopic[topic].total++;
       }

@@ -243,5 +243,72 @@ Suatu struktur dapat memiliki $r \\ge 3$ reaksi tumpuan tetapi tetap tidak stabi
 > [!WARNING]
 > **Mengapa ini penting:** Ketidakstabilan geometris menyebabkan kegagalan struktur secara mendadak. Seorang insinyur harus memastikan tumpuan diorientasikan untuk menghalangi translasi di semua sumbu dan mencegah rotasi.
 `
+  },
+  {
+    id: 'trusses',
+    title: '6. Trusses and Method of Joints',
+    titleId: '6. Rangka Batang & Metode Titik Hubung',
+    summary: 'Analyze planar pin-jointed trusses and solve member forces.',
+    summaryId: 'Menganalisis rangka batang planar dan menghitung gaya batang.',
+    contentMarkdown: `
+### What is a Truss?
+A **truss** is a structure composed of slender members joined together at their end points. Planar trusses lie in a single plane and are commonly used to support roofs and bridges.
+
+### Key Assumptions of Ideal Trusses:
+1. **Pin-Jointed Connections**: Members are joined together by smooth, frictionless pins.
+2. **Loads at Joints Only**: All external loads and support reactions are applied directly to the joints. Member self-weight is neglected or split between the joints.
+3. **Two-Force Members**: Since loads are only applied at joints and connections are pinned, each member acts as a **two-force member**. This means it carries only axial force (either tension or compression), with no bending moments or shear forces.
+
+### Tension vs. Compression Sign Convention:
+- **Tension (T) [Positive, +]**: The member is being pulled, which means it pulls *away* from the connected joints.
+- **Compression (C) [Negative, -]**: The member is being pushed/squeezed, which means it pushes *towards* the connected joints.
+
+### Truss Determinacy Formula ($m + r = 2j$):
+For a planar truss with $m$ members, $r$ support reaction components, and $j$ joints:
+- **Unstable**: $m + r < 2j$
+- **Statically Determinate**: $m + r = 2j$ (and stable)
+- **Statically Indeterminate**: $m + r > 2j$
+
+### Method of Joints Workflow:
+1. **Calculate Support Reactions**: Solve reactions for the entire truss treating it as a single rigid body using $\\sum F_x = 0$, $\\sum F_y = 0$, $\\sum M_P = 0$.
+2. **Find a Joint with $\\le 2$ Unknowns**: Choose a joint that connects at most two members with unknown forces.
+3. **Apply Joint Equilibrium**: Write $\\sum F_x = 0$ and $\\sum F_y = 0$ for the joint. Solve for the unknowns.
+4. **Propagate**: Move to adjacent joints, treating the solved member forces as known values. Repeat until all member forces are solved.
+
+### Zero-Force Member Rules:
+By inspecting a truss, you can immediately identify members that carry no load under specific conditions:
+- **Rule 1 (2-member joint)**: If only two non-collinear members meet at an unloaded, unsupported joint, both are zero-force members.
+- **Rule 2 (3-member joint)**: If three members meet at an unloaded, unsupported joint and two of them are collinear, the third non-collinear member is a zero-force member.
+`,
+    contentMarkdownId: `
+### Apa itu Rangka Batang?
+**Rangka batang (truss)** adalah struktur yang terdiri dari batang-batang ramping yang dihubungkan di ujung-ujungnya. Rangka batang planar terletak pada satu bidang rata dan umumnya digunakan untuk menopang atap dan jembatan.
+
+### Asumsi Utama Rangka Batang Ideal:
+1. **Sambungan Sendi/Engsel**: Batang dihubungkan menggunakan pin yang licin tanpa gesekan.
+2. **Beban Hanya di Titik Hubung**: Semua beban luar dan reaksi tumpuan bekerja langsung pada titik hubung (joint). Berat sendiri batang diabaikan atau dibagi rata ke titik hubung.
+3. **Batang Dua Gaya (Two-Force Members)**: Karena beban hanya di titik hubung dan sambungan berupa sendi, setiap batang bertindak sebagai **batang dua gaya**. Artinya, batang hanya menyalurkan gaya aksial (tarik atau tekan), tanpa adanya momen lentur atau gaya geser lintang.
+
+### Konvensi Tanda Tarik vs. Tekan:
+- **Tarik (Tension) [Positif, +]**: Batang mengalami tarikan, sehingga menarik *menjauhi* titik hubung yang terhubung.
+- **Tekan (Compression) [Negatif, -]**: Batang mengalami tekanan, sehingga mendorong *menuju* titik hubung yang terhubung.
+
+### Rumus Determinasi Rangka Batang ($m + r = 2j$):
+Untuk rangka batang planar dengan $m$ batang, $r$ komponen reaksi tumpuan, dan $j$ titik hubung:
+- **Labil (Unstable)**: $m + r < 2j$
+- **Statis Tertentu (Determinate)**: $m + r = 2j$ (dan stabil)
+- **Statis Tak Tentu (Indeterminate)**: $m + r > 2j$
+
+### Langkah Metode Titik Hubung:
+1. **Hitung Reaksi Tumpuan**: Selesaikan reaksi untuk seluruh rangka batang sebagai satu kesatuan benda tegar menggunakan $\\sum F_x = 0$, $\\sum F_y = 0$, $\\sum M_P = 0$.
+2. **Pilih Titik Hubung dengan $\\le 2$ Unknown**: Pilih titik hubung yang memiliki maksimal dua gaya batang yang belum diketahui nilainya.
+3. **Terapkan Kesetimbangan Titik**: Tulis $\\sum F_x = 0$ dan $\\sum F_y = 0$ untuk titik tersebut. Selesaikan nilai gaya batangnya.
+4. **Rambatkan**: Pindah ke titik hubung sebelahnya, perlakukan gaya batang yang sudah dihitung sebagai nilai yang diketahui. Ulangi sampai semua gaya batang terhitung.
+
+### Aturan Batang Gaya Nol (Zero-Force Members):
+Melalui inspeksi visual, Anda dapat langsung mengenali batang yang tidak memikul beban:
+- **Aturan 1 (Joint 2 batang)**: Jika hanya dua batang yang tidak sejajar bertemu di titik hubung yang tidak dibebani dan tidak ditumpu, kedua batang tersebut adalah batang gaya nol.
+- **Aturan 2 (Joint 3 batang)**: Jika tiga batang bertemu di titik hubung yang tidak dibebani dan tidak ditumpu serta dua diantaranya sejajar (collinear), maka batang ketiga yang tidak sejajar merupakan batang gaya nol.
+`
   }
 ];

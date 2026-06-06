@@ -28,6 +28,13 @@ describe('Hash-based Routing System', () => {
 
     // Progress Dashboard
     expect(parseRoute('#/progress')).toEqual({ page: 'progress' });
+
+    // Truss Workspace
+    expect(parseRoute('#/trusses')).toEqual({ page: 'trusses' });
+    expect(parseRoute('#/trusses/truss-1')).toEqual({
+      page: 'trusses',
+      problemId: 'truss-1',
+    });
   });
 
   it('falls back to dashboard for invalid paths', () => {
@@ -43,6 +50,8 @@ describe('Hash-based Routing System', () => {
     expect(buildHash({ page: 'guided', problemId: 'beam-3' })).toBe('#/guided/beam-3');
     expect(buildHash({ page: 'concept', topicId: 'equilibrium' })).toBe('#/concept/equilibrium');
     expect(buildHash({ page: 'progress' })).toBe('#/progress');
+    expect(buildHash({ page: 'trusses' })).toBe('#/trusses');
+    expect(buildHash({ page: 'trusses', problemId: 'truss-simple-triangle' })).toBe('#/trusses/truss-simple-triangle');
   });
 
   it('bridges legacy pages to route objects correctly', () => {
@@ -61,5 +70,15 @@ describe('Hash-based Routing System', () => {
       page: 'concept',
       topicId: 'equilibrium',
     });
+    expect(legacyToRoute('trusses')).toEqual({ page: 'trusses' });
+    expect(legacyToRoute('trusses', { problemId: 'truss-2' })).toEqual({
+      page: 'trusses',
+      problemId: 'truss-2',
+    });
+    expect(legacyToRoute('trusses/truss-3')).toEqual({
+      page: 'trusses',
+      problemId: 'truss-3',
+    });
   });
 });
+

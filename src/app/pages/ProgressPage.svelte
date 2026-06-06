@@ -2,14 +2,15 @@
   import { locale } from '../../lib/utils/i18n';
   import { beamProblems } from '../../content/problems/beam-problems';
   import { starterProblems } from '../../content/problems/statics-problems';
+  import { trussProblems } from '../../content/problems/truss-problems';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
   import type { ProgressSummary, Attempt } from '../../lib/domain/progress/types';
-  import type { ProblemModel } from '../../lib/domain/models/types';
+  import type { AnyProblem } from '../../lib/services/progressRepository';
 
   export let onNavigate: (page: string, params?: any) => void;
 
   const repo = getProgressRepository();
-  const allProblems: ProblemModel[] = [...beamProblems, ...starterProblems];
+  const allProblems: AnyProblem[] = [...beamProblems, ...starterProblems, ...trussProblems];
 
   let summary: ProgressSummary = repo.getSummary(allProblems);
   let recentAttempts: Attempt[] = repo.getAttempts().slice(-10).reverse();
@@ -26,18 +27,26 @@
     refreshData();
   }
 
-  function findNextUnsolved(): string | null {
+  function findNextUnsolved(): AnyProblem | null {
     for (const p of beamProblems) {
       const progress = repo.getProblemProgress(p.id);
-      if (!progress.completed) return p.id;
+      if (!progress.completed) return p;
+    }
+    for (const p of trussProblems) {
+      const progress = repo.getProblemProgress(p.id);
+      if (!progress.completed) return p;
     }
     return null;
   }
 
   function handleContinue() {
-    const nextId = findNextUnsolved();
-    if (nextId) {
-      onNavigate(`guided/${nextId}`);
+    const next = findNextUnsolved();
+    if (next) {
+      if (next.topic === 'trusses') {
+        onNavigate('trusses', { problemId: next.id });
+      } else {
+        onNavigate(`guided/${next.id}`);
+      }
     } else {
       onNavigate('dashboard');
     }
@@ -55,6 +64,7 @@
     'equilibrium': { en: 'Equilibrium', id: 'Kesetimbangan' },
     'determinacy': { en: 'Determinacy & Stability', id: 'Determinasi & Stabilitas' },
     'beam-internal-forces': { en: 'Beam Internal Forces', id: 'Gaya Dalam Balok' },
+    'trusses': { en: 'Trusses', id: 'Rangka Batang' },
   };
 
   function topicLabel(key: string): string {

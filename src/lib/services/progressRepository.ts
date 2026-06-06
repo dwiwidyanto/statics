@@ -11,6 +11,9 @@ import type {
   ProgressSummary,
 } from '../domain/progress/types';
 import type { ProblemModel } from '../domain/models/types';
+import type { TrussModel } from '../domain/truss/types';
+
+export type AnyProblem = ProblemModel | TrussModel;
 
 export interface ProgressRepository {
   /** Persist a new attempt. */
@@ -23,7 +26,7 @@ export interface ProgressRepository {
   getProblemProgress(problemId: string): ProblemProgress;
 
   /** Get global progress summary across all problems. */
-  getSummary(allProblems: ProblemModel[]): ProgressSummary;
+  getSummary(allProblems: AnyProblem[]): ProgressSummary;
 
   /** Erase all stored progress data. */
   reset(): void;

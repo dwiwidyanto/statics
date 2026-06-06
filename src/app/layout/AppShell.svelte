@@ -111,11 +111,14 @@
         </button>
       {/each}
 
-      <div class="nav-section-title">{translations[$locale].futureExpansion}</div>
-      <div class="nav-item disabled" aria-disabled="true">
+      <div class="nav-section-title">{$locale === 'id' ? 'Rangka Batang' : 'Trusses'}</div>
+      <button 
+        class="nav-item {currentPage === 'trusses' || currentPage.startsWith('trusses/') ? 'active' : ''}"
+        on:click={() => onNavigate('trusses')}
+      >
         <span class="nav-icon">🕸️</span>
-        <span>Truss Solver <small class="coming-soon">{translations[$locale].comingSoon}</small></span>
-      </div>
+        <span>{$locale === 'id' ? 'Latihan Rangka' : 'Truss Solver'}</span>
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -253,11 +256,6 @@
     font-weight: 600;
   }
 
-  .nav-item.disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
   .nav-icon {
     font-size: 1.1rem;
   }
@@ -266,15 +264,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .coming-soon {
-    font-size: 0.6rem;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    padding: 0.05rem 0.25rem;
-    border-radius: 3px;
-    font-weight: 700;
   }
 
   .sidebar-footer {

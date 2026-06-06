@@ -132,27 +132,23 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 
 ---
 
-## 🚀 Future Expansion Guide (Stage 2+)
+## 🕸️ Stage 3A: Truss Domain Foundation & Solver
 
-To add a new learning module (such as a **Truss Solver** or **Internal Shear & Bending Moment Diagrams**), follow this structured workflow:
+We have successfully implemented the truss domain foundation and joint equilibrium solver:
+- **Truss Domain Models**: Added planar pin-jointed truss representation in `src/lib/domain/truss/types.ts`.
+- **Method of Joints Solver**: Programmatic pre-solving of $3 \times 3$ support reactions followed by joint-by-joint marching equations in `src/lib/domain/truss/solver.ts`.
+- **Zero-force Member Rules**: Automatically detects Rule 1 (unloaded/unsupported joint with two non-collinear members) and Rule 2 (unloaded/unsupported joint with three members, two of which are collinear), propagating the results iteratively.
+- **Truss Workspace**: Interactive SVG canvas rendering tension (blue), compression (red), and zero-force (gray/dashed) members, with bilingual selector, results table, and joint equations panel.
 
-### Step 1: Define Domain Models & Math Logic
-1. Open `src/lib/domain/models/types.ts` and add any truss/internal force interfaces (e.g. `Joint`, `Member`, `ForceState`).
-2. Create a new solver script under `src/lib/domain/solvers/truss.ts` containing the method of joints or method of sections solver logic in pure TypeScript.
+### New Hash Routes:
+- `#/trusses` - Truss Practice workspace dashboard.
+- `#/trusses/:problemId` - Load a specific truss problem directly (e.g. `#/trusses/truss-simple-triangle`).
 
-### Step 2: Create Learning Content
-1. Go to `src/content/topics/statics-content.ts` and add a new `TopicSection` object explaining truss mathematics.
-2. Go to `src/content/problems/statics-problems.ts` and add truss presets.
+### Quality Gate Commands:
+Ensure all systems remain operational with:
+```bash
+npm run test     # Run all 43 Vitest tests
+npm run check    # Verify zero TypeScript and Svelte diagnostics
+npm run build    # Compile production client bundles
+```
 
-### Step 3: Implement Visual Slices
-1. Create custom visual renderers (e.g. drawing truss bars or shear graphs) under `src/lib/ui/`.
-2. Add a new view file `src/app/pages/TrussPracticePage.svelte` to assemble the truss sandbox.
-
-### Step 4: Route the View
-1. Open `src/app/layout/AppShell.svelte` and enable/activate the "Truss Solver" navigation item.
-2. Open `src/App.svelte` and add the state routing logic:
-   ```svelte
-   {#if currentPage === 'trusses'}
-     <TrussPracticePage onNavigate={navigate} />
-   {/if}
-   ```

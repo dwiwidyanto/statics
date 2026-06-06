@@ -11,6 +11,8 @@
  *   #/guided/:problemId      → guided beam workspace
  *   #/concept/:topicId       → concept page
  *   #/progress               → progress dashboard
+ *   #/trusses                → truss workspace
+ *   #/trusses/:problemId     → truss workspace with preloaded problem
  *   (anything else)          → dashboard (fallback)
  */
 
@@ -25,7 +27,8 @@ export type Route =
   | { page: 'practice'; problemId?: string }
   | { page: 'guided'; problemId: string }
   | { page: 'concept'; topicId: string }
-  | { page: 'progress' };
+  | { page: 'progress' }
+  | { page: 'trusses'; problemId?: string };
 
 // ---------------------------------------------------------------------------
 // Parsing
@@ -62,6 +65,11 @@ export function parseRoute(hash: string): Route {
     case 'progress':
       return { page: 'progress' };
 
+    case 'trusses':
+      return segments.length > 1
+        ? { page: 'trusses', problemId: segments.slice(1).join('/') }
+        : { page: 'trusses' };
+
     default:
       return { page: 'dashboard' };
   }
@@ -84,6 +92,8 @@ export function buildHash(route: Route): string {
       return `#/concept/${route.topicId}`;
     case 'progress':
       return '#/progress';
+    case 'trusses':
+      return route.problemId ? `#/trusses/${route.problemId}` : '#/trusses';
   }
 }
 
@@ -140,7 +150,9 @@ export function legacyToRoute(page: string, params?: { problemId?: string }): Ro
   if (page === 'dashboard') return { page: 'dashboard' };
   if (page === 'progress') return { page: 'progress' };
   if (page === 'practice') return { page: 'practice', problemId: params?.problemId };
+  if (page === 'trusses') return { page: 'trusses', problemId: params?.problemId };
   if (page.startsWith('guided/')) return { page: 'guided', problemId: page.substring(7) };
   if (page.startsWith('concept/')) return { page: 'concept', topicId: page.substring(8) };
+  if (page.startsWith('trusses/')) return { page: 'trusses', problemId: page.substring(8) };
   return { page: 'dashboard' };
 }

@@ -108,7 +108,7 @@ export interface SolverResult {
 export type StabilityClassification = 'stable' | 'unstable';
 export type DeterminacyClassification = 'statically_determinate' | 'statically_indeterminate' | 'unstable';
 
-export type ProblemTopic = 'fbd' | 'equilibrium' | 'determinacy' | 'beam-internal-forces';
+export type ProblemTopic = 'fbd' | 'equilibrium' | 'determinacy' | 'beam-internal-forces' | 'trusses';
 export type ProblemDifficulty = 'easy' | 'medium' | 'hard';
 
 export interface ReferenceSolution {
