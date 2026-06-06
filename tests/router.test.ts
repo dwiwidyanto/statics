@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseRoute, buildHash, legacyToRoute } from '../src/app/routing/router';
+import { parseRoute, buildHash, legacyToRoute, getRouteForAttempt } from '../src/app/routing/router';
 
 describe('Hash-based Routing System', () => {
   it('parses correct pages and params from hash paths', () => {
@@ -80,5 +80,50 @@ describe('Hash-based Routing System', () => {
       problemId: 'truss-3',
     });
   });
+
+  describe('getRouteForAttempt helper', () => {
+    const mockProblems = [
+      { id: 'prob-1', topic: 'equilibrium' },
+      { id: 'prob-2', topic: 'beam-internal-forces' },
+      { id: 'truss-triangle', topic: 'trusses' },
+    ];
+
+    it('returns trusses page for truss problems', () => {
+      expect(getRouteForAttempt('truss-triangle', mockProblems)).toEqual({
+        page: 'trusses',
+        problemId: 'truss-triangle',
+      });
+      // Fallback
+      expect(getRouteForAttempt('truss-unknown', [])).toEqual({
+        page: 'trusses',
+        problemId: 'truss-unknown',
+      });
+    });
+
+    it('returns guided page for beam problems', () => {
+      expect(getRouteForAttempt('prob-2', mockProblems)).toEqual({
+        page: 'guided',
+        problemId: 'prob-2',
+      });
+      // Fallback
+      expect(getRouteForAttempt('beam-cantilever', [])).toEqual({
+        page: 'guided',
+        problemId: 'beam-cantilever',
+      });
+    });
+
+    it('returns practice page for practice problems', () => {
+      expect(getRouteForAttempt('prob-1', mockProblems)).toEqual({
+        page: 'practice',
+        problemId: 'prob-1',
+      });
+      // Fallback
+      expect(getRouteForAttempt('unknown-starter', [])).toEqual({
+        page: 'practice',
+        problemId: 'unknown-starter',
+      });
+    });
+  });
 });
+
 

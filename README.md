@@ -41,15 +41,26 @@ The application uses a **domain-first modular architecture** to separate pure ma
 ```text
 src/
   ├── app/
+  │    ├── components/
+  │    │    ├── TrussAnswerInputPanel.svelte # Interactive truss practice form
+  │    │    ├── TrussPedagogyPanel.svelte    # Engineering theory reference card
+  │    │    └── ...
   │    ├── layout/
   │    │    └── AppShell.svelte       # Main responsive navigation wrapper
-  │    └── pages/
-  │         ├── Dashboard.svelte      # Homepage and preset select list
-  │         ├── ConceptPage.svelte    # Curriculum viewer with markdown+math parsing
-  │         └── PracticePage.svelte   # Sandbox orchestrator (state, controls)
+  │    ├── pages/
+  │    │    ├── Dashboard.svelte      # Homepage and preset select list
+  │    │    ├── ConceptPage.svelte    # Curriculum viewer with markdown+math parsing
+  │    │    ├── GuidedWorkspace.svelte# Guided beam solving workspace
+  │    │    ├── PracticePage.svelte   # Sandbox orchestrator (state, controls)
+  │    │    ├── ProgressPage.svelte   # Progress tracking dashboard
+  │    │    └── TrussPracticePage.svelte # Guided truss practice page
+  │    └── routing/
+  │         └── router.ts             # Hash-based routing and attempt matching
   ├── content/
   │    ├── problems/
-  │    │    └── statics-problems.ts   # Preset problems list (supports, loads, expected state)
+  │    │    ├── beam-problems.ts      # Guided beam problems
+  │    │    ├── statics-problems.ts   # Sandbox preset problems
+  │    │    └── truss-problems.ts     # Preloaded truss practice problems
   │    └── topics/
   │         └── statics-content.ts    # Concept curriculum pages database
   ├── features/
@@ -65,19 +76,44 @@ src/
        │    │    └── load.ts          # Load component resolving & UDL resultants
        │    ├── models/
        │    │    └── types.ts         # Central Domain Models (Point, Load, Support, Reaction)
+       │    ├── progress/
+       │    │    ├── types.ts         # Attempt and aggregate stats definitions
+       │    │    └── scoring.ts       # Reaction checking and tolerances
        │    ├── solvers/
        │    │    └── equilibrium.ts   # 3x3 Equation builder and Gaussian solver
        │    ├── supports/
        │    │    └── support.ts       # Support reaction maps (pin, roller, fixed)
+       │    ├── truss/                # Planar truss domain package
+       │    │    ├── types.ts         # Truss models and solver output types
+       │    │    ├── scoring.ts       # Reaction and member force checks (30%/70%)
+       │    │    ├── validation.ts    # Model connectivity checks
+       │    │    ├── geometry.ts      # Unit vector and moment solvers
+       │    │    ├── supportReactions.ts # Cramer's rule reactions solver
+       │    │    ├── zeroForceMembers.ts # ZFM Rule 1 & Rule 2 propagation
+       │    │    ├── methodOfJoints.ts # Marching joints equilibrium solver
+       │    │    ├── equilibriumCheck.ts # Residual joints checker
+       │    │    └── solver.ts        # Unified public solver API wrapper
        │    └── validation/
        │         └── checker.ts       # Stability & degrees-of-freedom validator
+       ├── services/
+       │    ├── localProgressRepository.ts # localStorage progress repository
+       │    └── progressRepository.ts # Progress storage interface definition
        ├── ui/
        │    ├── FbdCanvas.svelte      # SVG diagram engine (force arrows, wheels, pivot)
        │    ├── FeedbackPanel.svelte  # Diagnostic warning blocks
-       │    └── EquationsView.svelte  # ΣFx=0, ΣFy=0, ΣM=0 step-by-step assembly
+       │    ├── EquationsView.svelte  # ΣFx=0, ΣFy=0, ΣM=0 step-by-step assembly
+       │    └── TrussCanvas.svelte    # SVG truss diagram rendering
        └── utils/
 tests/
-  └── statics-solver.test.ts          # Pure domain logic vitest test suite
+  ├── beam-diagrams.test.ts
+  ├── problem-metadata.test.ts
+  ├── progress.test.ts
+  ├── router.test.ts
+  ├── scoring.test.ts
+  ├── statics-solver.test.ts
+  ├── truss-metadata.test.ts          # Validates truss problem definition geometry
+  ├── truss-scoring.test.ts           # Tests tolerances and feedback messages
+  └── truss-solver.test.ts            # Tests joint-by-joint Cramer's solver
 Dockerfile                            # Multi-stage production container configuration
 nginx.conf                            # Nginx static server rules for Svelte SPA fallback routing
 ```
@@ -132,23 +168,37 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 
 ---
 
-## 🕸️ Stage 3A: Truss Domain Foundation & Solver
+## 🕸️ Stage 3: Planar Truss Modules
 
-We have successfully implemented the truss domain foundation and joint equilibrium solver:
+### Stage 3A: Truss Domain Foundation & Solver
 - **Truss Domain Models**: Added planar pin-jointed truss representation in `src/lib/domain/truss/types.ts`.
 - **Method of Joints Solver**: Programmatic pre-solving of $3 \times 3$ support reactions followed by joint-by-joint marching equations in `src/lib/domain/truss/solver.ts`.
 - **Zero-force Member Rules**: Automatically detects Rule 1 (unloaded/unsupported joint with two non-collinear members) and Rule 2 (unloaded/unsupported joint with three members, two of which are collinear), propagating the results iteratively.
-- **Truss Workspace**: Interactive SVG canvas rendering tension (blue), compression (red), and zero-force (gray/dashed) members, with bilingual selector, results table, and joint equations panel.
+- **Truss Workspace**: Interactive SVG canvas rendering tension (blue), compression (red), and zero-force (gray/dashed) members.
 
-### New Hash Routes:
-- `#/trusses` - Truss Practice workspace dashboard.
-- `#/trusses/:problemId` - Load a specific truss problem directly (e.g. `#/trusses/truss-simple-triangle`).
+### Stage 3B: Guided Practice & Progress Scoring
+- **Truss Practice Panel**: Input forms for external support reactions and member axial forces with detailed, tolerance-aware feedback and correct/incorrect status labels (Tension (+), Compression (-)).
+- **Partial-Credit Scoring**: Balanced scoring engine utilizing a 30% reaction / 70% member forces weighted scoring schema with absolute (2 N) and relative (1%) tolerances.
+- **Local Progress persistence**: Automatically saves practice attempts and aggregates statistics to localStorage.
+- **Topic-Aware Routing Navigation**: Links attempts on the progress dashboard directly back to their corresponding workspace type.
+- **Solver Refactoring & Pedagogy**: Modularized the truss solver into self-contained files (`validation.ts`, `geometry.ts`, `supportReactions.ts`, `zeroForceMembers.ts`, `methodOfJoints.ts`, `equilibriumCheck.ts`), and created theory panels explaining equations and sign conventions.
 
-### Quality Gate Commands:
+### Active Application Routes
+- `#/` — Dashboard Home and Topic Selector
+- `#/practice` — Sandbox FBD and Reaction Solver
+- `#/practice/:problemId` — Sandbox Preset Load
+- `#/guided/:problemId` — Guided Beam Workspace (SFD/BMD)
+- `#/concept/:topicId` — Curriculum Concept Page
+- `#/progress` — Student Progress Dashboard
+- `#/trusses` — Truss practice selection page
+- `#/trusses/:problemId` — Interactive Truss Workspace
+
+### Quality Gate Commands
 Ensure all systems remain operational with:
 ```bash
-npm run test     # Run all 43 Vitest tests
-npm run check    # Verify zero TypeScript and Svelte diagnostics
-npm run build    # Compile production client bundles
+npm run test                  # Run all 55 Vitest tests successfully
+npm run check                 # Verify zero TypeScript and Svelte diagnostics
+npm run build                 # Compile production client bundles
+npm audit --audit-level=low   # Audits package dependencies
 ```
 

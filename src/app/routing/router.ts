@@ -156,3 +156,31 @@ export function legacyToRoute(page: string, params?: { problemId?: string }): Ro
   if (page.startsWith('trusses/')) return { page: 'trusses', problemId: page.substring(8) };
   return { page: 'dashboard' };
 }
+
+/**
+ * Determines the target route for a saved attempt based on the problem ID and list of all problems.
+ */
+export function getRouteForAttempt(
+  problemId: string,
+  allProblems: { id: string; topic: string }[]
+): Route {
+  const problem = allProblems.find(p => p.id === problemId);
+  if (problem) {
+    if (problem.topic === 'trusses') {
+      return { page: 'trusses', problemId };
+    } else if (problem.topic === 'beam-internal-forces') {
+      return { page: 'guided', problemId };
+    } else {
+      return { page: 'practice', problemId };
+    }
+  }
+
+  // Fallbacks based on string prefixes/contents
+  if (problemId.startsWith('truss-')) {
+    return { page: 'trusses', problemId };
+  } else if (problemId.includes('beam') || problemId.startsWith('guided-')) {
+    return { page: 'guided', problemId };
+  }
+  return { page: 'practice', problemId };
+}
+

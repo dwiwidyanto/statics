@@ -6,6 +6,10 @@
   import TrussProblemSelector from '../components/TrussProblemSelector.svelte';
   import TrussResultsPanel from '../components/TrussResultsPanel.svelte';
   import TrussJointEquationsPanel from '../components/TrussJointEquationsPanel.svelte';
+  import TrussAnswerInputPanel from '../components/TrussAnswerInputPanel.svelte';
+  import TrussPedagogyPanel from '../components/TrussPedagogyPanel.svelte';
+  import { scoreTrussAttempt } from '../../lib/domain/truss/scoring';
+  import type { TrussScoreResult } from '../../lib/domain/truss/scoring';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
   import type { Attempt } from '../../lib/domain/progress/types';
 
@@ -16,13 +20,38 @@
   let showToast = false;
 
   // Selected problem state
-  let selectedProblemId = problemId || trussProblems[0].id;
+  let selectedProblemId = trussProblems[0].id;
 
-  // React to prop changes or internally selected id
+  // Sync route parameter changes reactively and validate
+  $: {
+    if (problemId) {
+      const exists = trussProblems.some(p => p.id === problemId);
+      selectedProblemId = exists ? problemId : trussProblems[0].id;
+    } else {
+      selectedProblemId = trussProblems[0].id;
+    }
+  }
+
+  // React to selected id
   $: activeProblem = trussProblems.find(p => p.id === selectedProblemId) || trussProblems[0];
 
   // Solve problem
   $: solverResult = solveTruss(activeProblem);
+
+  // Practice state
+  let checkedResult: TrussScoreResult | null = null;
+  let isSaved = false;
+  let currentAnswers: {
+    reactions: Record<string, number | null>;
+    memberForces: Record<string, number | null>;
+  } | null = null;
+
+  // Reset input and check state when activeProblem changes
+  $: if (activeProblem) {
+    checkedResult = null;
+    isSaved = false;
+    currentAnswers = null;
+  }
 
   function handleSelectProblem(id: string) {
     selectedProblemId = id;
@@ -30,33 +59,64 @@
     onNavigate('trusses', { problemId: id });
   }
 
-  function handleMarkSolved() {
-    if (!activeProblem) return;
+  function handleCheckAnswers(answers: {
+    reactions: Record<string, number | null>;
+    memberForces: Record<string, number | null>;
+  }) {
+    if (!activeProblem || !solverResult.isSolved) return;
 
-    // Check if progress already solved to avoid redundant toast
-    const progress = repo.getProblemProgress(activeProblem.id);
-    if (progress.completed) {
-      showToast = true;
-      setTimeout(() => { showToast = false; }, 3000);
-      return;
+    currentAnswers = answers;
+
+    const memberLabels: Record<string, string> = {};
+    for (const m of activeProblem.members) {
+      memberLabels[m.id] = m.label;
     }
+
+    checkedResult = scoreTrussAttempt(
+      answers,
+      {
+        reactions: solverResult.reactions,
+        memberForces: solverResult.memberForces
+      },
+      {},
+      memberLabels
+    );
+  }
+
+  function handleSaveAttempt() {
+    if (!activeProblem || !checkedResult || !currentAnswers) return;
 
     const attemptId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : Math.random().toString(36).substring(2, 9);
+
+    const flatAnswers: Record<string, number> = {};
+    for (const [k, v] of Object.entries(currentAnswers.reactions)) {
+      if (v !== null && v !== undefined) {
+        flatAnswers[k] = v;
+      }
+    }
+    for (const [k, v] of Object.entries(currentAnswers.memberForces)) {
+      if (v !== null && v !== undefined) {
+        flatAnswers[k] = v;
+      }
+    }
 
     const attempt: Attempt = {
       id: attemptId,
       problemId: activeProblem.id,
       problemVersion: activeProblem.version,
       createdAt: new Date().toISOString(),
-      answers: {}, // educational mode, no input form answers required
-      score: 1.0,  // perfect score for completing the study
-      feedback: [$locale === 'id' ? 'Kemajuan disimpan!' : 'Progress saved!'],
-      completed: true
+      answers: flatAnswers,
+      score: checkedResult.score,
+      feedback: checkedResult.summaryMessages.length > 0 
+        ? checkedResult.summaryMessages 
+        : [$locale === 'id' ? 'Semua jawaban benar!' : 'All answers correct!'],
+      completed: checkedResult.completed
     };
 
     repo.saveAttempt(attempt);
+    isSaved = true;
     showToast = true;
     setTimeout(() => { showToast = false; }, 3000);
   }
@@ -123,37 +183,40 @@
         </div>
       </div>
 
-      <TrussJointEquationsPanel 
-        jointEquations={solverResult.jointEquations} 
-        messages={solverResult.messages} 
-      />
+      {#if checkedResult}
+        <TrussJointEquationsPanel 
+          jointEquations={solverResult.jointEquations} 
+          messages={solverResult.messages} 
+        />
+      {/if}
     </div>
 
-    <!-- Right column: Results & Progress -->
+    <!-- Right column: Inputs, Pedagogy, Results -->
     <div class="sidebar-column">
-      <div class="action-card">
-        <h3>{$locale === 'id' ? 'Latihan & Kemajuan' : 'Practice & Progress'}</h3>
-        <p class="card-desc">
-          {$locale === 'id'
-            ? 'Pelajari struktur ini, periksa gaya batangnya, lalu tandai sebagai selesai untuk menyimpan kemajuan Anda.'
-            : 'Study this structure, inspect the solved member forces, and mark it as solved to save your progress.'}
-        </p>
-        <button class="btn btn-primary solve-btn" on:click={handleMarkSolved}>
-          {$locale === 'id' ? 'Tandai Selesai & Simpan' : 'Mark as Solved & Save'}
-        </button>
-      </div>
-
-      <TrussResultsPanel 
-        m={activeProblem.members.length} 
-        r={solverResult.reactions ? Object.keys(solverResult.reactions).length : 0} 
-        j={activeProblem.joints.length} 
-        determinacy={solverResult.determinacy} 
-        stability={solverResult.stability} 
-        reactions={solverResult.reactions} 
-        memberForces={solverResult.memberForces} 
-        members={activeProblem.members} 
-        zeroForceMembers={solverResult.zeroForceMembers} 
+      <TrussAnswerInputPanel
+        reactionsReference={solverResult.reactions}
+        members={activeProblem.members}
+        onCheck={handleCheckAnswers}
+        onSave={handleSaveAttempt}
+        checkedResult={checkedResult}
+        isSaved={isSaved}
       />
+
+      <TrussPedagogyPanel />
+
+      {#if checkedResult}
+        <TrussResultsPanel 
+          m={activeProblem.members.length} 
+          r={solverResult.reactions ? Object.keys(solverResult.reactions).length : 0} 
+          j={activeProblem.joints.length} 
+          determinacy={solverResult.determinacy} 
+          stability={solverResult.stability} 
+          reactions={solverResult.reactions} 
+          memberForces={solverResult.memberForces} 
+          members={activeProblem.members} 
+          zeroForceMembers={solverResult.zeroForceMembers} 
+        />
+      {/if}
     </div>
   </div>
 </div>
@@ -318,35 +381,7 @@
     border-top: 2px dashed #9ca3af;
   }
 
-  .action-card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1.25rem;
-  }
 
-  .action-card h3 {
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-  }
-
-  .card-desc {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
-    margin-top: 0;
-    margin-bottom: 1.25rem;
-  }
-
-  .solve-btn {
-    width: 100%;
-    font-size: 0.88rem;
-    font-weight: 700;
-    padding: 0.6rem;
-  }
 
   @media (max-width: 900px) {
     .workspace-grid {

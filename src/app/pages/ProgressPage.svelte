@@ -6,6 +6,7 @@
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
   import type { ProgressSummary, Attempt } from '../../lib/domain/progress/types';
   import type { AnyProblem } from '../../lib/services/progressRepository';
+  import { getRouteForAttempt } from '../../app/routing/router';
 
   export let onNavigate: (page: string, params?: any) => void;
 
@@ -167,7 +168,16 @@
         {#each recentAttempts as attempt}
           <button 
             class="attempt-card"
-            on:click={() => onNavigate(`guided/${attempt.problemId}`)}
+            on:click={() => {
+              const route = getRouteForAttempt(attempt.problemId, allProblems);
+              if (route.page === 'trusses') {
+                onNavigate('trusses', { problemId: route.problemId });
+              } else if (route.page === 'guided') {
+                onNavigate(`guided/${route.problemId}`);
+              } else if (route.page === 'practice') {
+                onNavigate('practice', { problemId: route.problemId });
+              }
+            }}
           >
             <div class="attempt-info">
               <span class="attempt-title">{getProblemTitle(attempt.problemId)}</span>
