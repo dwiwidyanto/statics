@@ -172,4 +172,58 @@ describe('Static Equilibrium Solver & Checker', () => {
     expect(validation.stability).toBe('unstable');
     expect(validation.determinacy).toBe('unstable');
   });
+
+  it('solves a simply supported beam with an inclined roller support', () => {
+    // Pin at x=0 (A), Roller at x=6 (B) inclined at 30 degrees
+    const supports: Support[] = [
+      { id: 'sa', type: 'pin', position: { x: 0, y: 0 }, angle: 0, label: 'A' },
+      { id: 'sb', type: 'roller', position: { x: 6, y: 0 }, angle: 30, label: 'B' },
+    ];
+
+    // Midpoint force of 600N downwards at x=3
+    const loads: Load[] = [
+      {
+        id: 'l1',
+        type: 'point_force',
+        label: 'P1',
+        magnitude: 600,
+        angle: 270,
+        position: { x: 3, y: 0 },
+      },
+    ];
+
+    const result = solveEquilibrium(body, supports, loads);
+    expect(result.isSolved).toBe(true);
+
+    // Ry reactions should be computed correctly.
+    // Sum M_A = 0 => R_B * cos(30) * 6 - 600 * 3 = 0 => R_B = 300 / cos(30) = 346.41 N
+    // R_Bx = 346.41 * cos(120) = -173.2 N
+    // R_By = 346.41 * sin(120) = 300 N
+    // R_Ax = 173.2 N, R_Ay = 300 N
+    const rB = result.reactions['R_B'] ?? 0;
+    expect(rB).toBeCloseTo(346.41, 1);
+    
+    const rAx = result.reactions['R_Ax'] ?? 0;
+    expect(rAx).toBeCloseTo(173.2, 1);
+    
+    const rAy = result.reactions['R_Ay'] ?? 0;
+    expect(rAy).toBeCloseTo(300, 1);
+  });
+
+  it('handles zero-length distributed load edge case', () => {
+    const load: Load = {
+      id: 'l_dist_zero',
+      type: 'distributed_load',
+      label: 'w1',
+      magnitudeStart: 200,
+      magnitudeEnd: 200,
+      startPosition: { x: 2, y: 0 },
+      endPosition: { x: 2, y: 0 },
+      angle: 270,
+    };
+
+    const resultant = getDistributedLoadResultant(load);
+    expect(resultant.magnitude).toBe(0);
+    expect(resultant.position.x).toBe(2);
+  });
 });

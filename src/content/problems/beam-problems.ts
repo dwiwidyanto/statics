@@ -39,7 +39,12 @@ export const beamProblems: ProblemModel[] = [
       'Jumlahkan momen di sekitar A untuk menghitung R_By: ΣM_A = R_By * 6 - 800 * 3 = 0 => R_By = 400 N.',
       'Jumlahkan gaya vertikal untuk menghitung R_Ay: ΣF_y = R_Ay + R_By - 800 = 0 => R_Ay = 400 N.',
       'Jumlahkan gaya horizontal untuk menghitung R_Ax: ΣF_x = R_Ax = 0.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'easy',
+    version: 1,
+    estimatedTimeMinutes: 10,
+    learningObjectives: ['Apply moment equilibrium to find reactions', 'Verify results with force equilibrium']
   },
   {
     id: 'beam-simply-supported-two-points',
@@ -73,7 +78,12 @@ export const beamProblems: ProblemModel[] = [
       'Jumlahkan momen di sekitar A: ΣM_A = R_By * 9 - 300 * 3 - 600 * 6 = 0 => R_By = (900 + 3600) / 9 = 500 N.',
       'Jumlahkan gaya vertikal: ΣF_y = R_Ay + R_By - 300 - 600 = 0 => R_Ay = 400 N.',
       'Periksa kesetimbangan horizontal: R_Ax = 0.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'easy',
+    version: 1,
+    estimatedTimeMinutes: 12,
+    learningObjectives: ['Handle multiple point loads', 'Superposition of load effects']
   },
   {
     id: 'beam-cantilever-point-load',
@@ -105,7 +115,12 @@ export const beamProblems: ProblemModel[] = [
       'Tumpuan jepit memberikan reaksi gaya vertikal, horizontal, dan momen reaksi.',
       'Kesetimbangan vertikal: R_Ay - 500 = 0 => R_Ay = 500 N.',
       'Kesetimbangan momen terhadap A: M_A - 500 * 4 = 0 => M_A = 2000 N·m (Berlawanan arah jarum jam).'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'easy',
+    version: 1,
+    estimatedTimeMinutes: 8,
+    learningObjectives: ['Understand fixed support reactions', 'Solve cantilever equilibrium']
   },
   {
     id: 'beam-cantilever-moment',
@@ -137,7 +152,12 @@ export const beamProblems: ProblemModel[] = [
       'Karena tidak ada gaya vertikal luar, R_Ay = 0.',
       'Momen yang diterapkan adalah CW (-1200 N·m). Untuk menjaga kesetimbangan, momen reaksi M_A harus bernilai CCW (+1200 N·m).',
       'Reaksi gaya horizontal adalah nol: R_Ax = 0.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'easy',
+    version: 1,
+    estimatedTimeMinutes: 8,
+    learningObjectives: ['Understand applied moment loads', 'Moment equilibrium with no transverse forces']
   },
   {
     id: 'beam-simply-supported-full-udl',
@@ -179,7 +199,12 @@ export const beamProblems: ProblemModel[] = [
       'Hitung gaya ekivalen: W = w * L = 150 N/m * 8 m = 1200 N ke bawah, bekerja pada x = 4m.',
       'Simetri menunjukkan bahwa reaksi tumpuan membagi beban secara merata: R_Ay = R_By = 1200 / 2 = 600 N.',
       'Verifikasi dengan jumlah momen di sekitar A: R_By * 8 - 1200 * 4 = 0 => R_By = 600 N.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'easy',
+    version: 1,
+    estimatedTimeMinutes: 10,
+    learningObjectives: ['Convert UDL to equivalent point load', 'Use symmetry to verify reactions']
   },
   {
     id: 'beam-simply-supported-partial-udl',
@@ -223,7 +248,12 @@ export const beamProblems: ProblemModel[] = [
       'Pusat gaya merata: x = 2m + (4m / 2) = 4m.',
       'Jumlah momen di sekitar A: ΣM_A = R_By * 6 - 1600 * 4 = 0 => R_By = 6400 / 6 = 1066.7 N.',
       'Jumlah gaya vertikal: ΣF_y = R_Ay + R_By - 1600 = 0 => R_Ay = 1600 - 1066.7 = 533.3 N.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'medium',
+    version: 1,
+    estimatedTimeMinutes: 12,
+    learningObjectives: ['Handle partial-span UDL', 'Locate UDL centroid for moment calculations']
   },
   {
     id: 'beam-overhang-single-point',
@@ -256,7 +286,12 @@ export const beamProblems: ProblemModel[] = [
       'Jumlahkan momen di sekitar A: R_By * 6 - 400 * 8 = 0 => R_By = 3200 / 6 = 533.3 N.',
       'Jumlahkan gaya vertikal: R_Ay + R_By - 400 = 0 => R_Ay = 400 - 533.3 = -133.3 N.',
       'Perhatikan bahwa R_Ay bernilai negatif: tumpuan A harus menahan balok ke bawah untuk mencegahnya terangkat!'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'medium',
+    version: 1,
+    estimatedTimeMinutes: 12,
+    learningObjectives: ['Analyze overhanging beams', 'Interpret negative reaction values']
   },
   {
     id: 'beam-overhang-udl-point',
@@ -299,7 +334,12 @@ export const beamProblems: ProblemModel[] = [
       'Gaya ekivalen beban merata: W = 200 * 6 = 1200 N, bekerja pada x = 5m (jarak ke A adalah 5m - 2m = 3m).',
       'Jumlah momen di sekitar A (x=2): R_By * 6 - 1200 * 3 - 600 * 8 = 0 => R_By = (3600 + 4800) / 6 = 1400 N.',
       'Jumlah gaya vertikal: R_Ay + R_By - 1200 - 600 = 0 => R_Ay = 1800 - 1400 = 400 N.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'medium',
+    version: 1,
+    estimatedTimeMinutes: 15,
+    learningObjectives: ['Combine UDL and point loads', 'Internal supports with overhang']
   },
   {
     id: 'beam-simply-supported-diagonal-force',
@@ -334,7 +374,12 @@ export const beamProblems: ProblemModel[] = [
       'Jumlah gaya horizontal: R_Ax + P_x = 0 => R_Ax - 250 = 0 => R_Ax = 250 N (ke kanan).',
       'Jumlahkan momen di sekitar A: R_By * 6 - 433.0 * 4 = 0 => R_By = 1732.1 / 6 = 288.7 N.',
       'Jumlah gaya vertikal: R_Ay + R_By - 433.0 = 0 => R_Ay = 433.0 - 288.7 = 144.3 N.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'medium',
+    version: 1,
+    estimatedTimeMinutes: 15,
+    learningObjectives: ['Resolve inclined forces into components', 'Handle non-vertical loads']
   },
   {
     id: 'beam-simply-supported-udl-point',
@@ -377,7 +422,12 @@ export const beamProblems: ProblemModel[] = [
       'Gaya terpusat ekivalen dari UDL: W = 100 * 4 = 400 N bekerja pada x=2.',
       'Jumlah momen di sekitar A: R_By * 8 - 400 * 2 - 300 * 6 = 0 => R_By = (800 + 1800) / 8 = 325 N.',
       'Jumlah gaya vertikal: R_Ay + R_By - 400 - 300 = 0 => R_Ay = 700 - 325 = 375 N.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'medium',
+    version: 1,
+    estimatedTimeMinutes: 15,
+    learningObjectives: ['Combine distributed and point loads', 'Apply superposition principle']
   },
   {
     id: 'beam-cantilever-combo',
@@ -419,7 +469,12 @@ export const beamProblems: ProblemModel[] = [
       'Gaya ekivalen dari UDL: W = 200 * 3 = 600 N bekerja pada x=1.5m.',
       'Jumlah gaya vertikal: R_Ay - 600 - 400 = 0 => R_Ay = 1000 N.',
       'Jumlah momen terhadap A: M_A - 600 * 1.5 - 400 * 5 = 0 => M_A = 900 + 2000 = 2900 N·m (CCW).'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'hard',
+    version: 1,
+    estimatedTimeMinutes: 15,
+    learningObjectives: ['Cantilever with combined loading', 'Compute reaction moments']
   },
   {
     id: 'beam-simply-supported-symmetrical-point-loads',
@@ -453,7 +508,12 @@ export const beamProblems: ProblemModel[] = [
       'Karena beban simetris, reaksi di kedua tumpuan harus sama: R_Ay = R_By.',
       'Total beban = 800 N. Sehingga R_Ay = R_By = 400 N.',
       'Periksa dengan persamaan momen untuk memverifikasi.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'hard',
+    version: 1,
+    estimatedTimeMinutes: 10,
+    learningObjectives: ['Exploit symmetry in beam analysis', 'Verify with moment equations']
   },
   {
     id: 'beam-double-overhang-point-loads',
@@ -487,7 +547,12 @@ export const beamProblems: ProblemModel[] = [
       'Konfigurasi ini benar-benar simetris terhadap pusat balok (x=5).',
       'Artinya kedua reaksi tumpuan adalah sama: R_Ay = R_By = 300 N.',
       'Jumlah gaya vertikal: R_Ay + R_By = 600 N. Ini sepenuhnya memenuhi kesetimbangan!'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'hard',
+    version: 1,
+    estimatedTimeMinutes: 12,
+    learningObjectives: ['Analyze double-overhanging beams', 'Symmetrical loading patterns']
   },
   {
     id: 'beam-simply-supported-applied-moment',
@@ -520,7 +585,12 @@ export const beamProblems: ProblemModel[] = [
       'Jumlahkan momen di sekitar A: R_By * 6 + 900 = 0 => R_By * 6 = -900 => R_By = -150 N (ke bawah).',
       'Jumlah gaya vertikal: R_Ay + R_By = 0 => R_Ay - 150 = 0 => R_Ay = 150 N (ke atas).',
       'Beban momen murni menghasilkan reaksi vertikal yang sama besar namun berlawanan arah (kopel gaya).'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'hard',
+    version: 1,
+    estimatedTimeMinutes: 12,
+    learningObjectives: ['Analyze pure moment loading', 'Understand force couples from applied moments']
   },
   {
     id: 'beam-cantilever-free-end-upward',
@@ -552,6 +622,11 @@ export const beamProblems: ProblemModel[] = [
       'Tumpuan jepit harus menyeimbangkan beban ke atas: R_Ay = -300 N (ke bawah).',
       'Jumlahkan momen di sekitar A: M_A + 300 * 4 = 0 => M_A = -1200 N·m (Searah jarum jam).',
       'Ini menghasilkan gaya lintang positif dan momen linier dari 0 di ujung hingga -1200 N·m di dinding.'
-    ]
+    ],
+    topic: 'beam-internal-forces',
+    difficulty: 'hard',
+    version: 1,
+    estimatedTimeMinutes: 10,
+    learningObjectives: ['Analyze upward loads on cantilevers', 'Interpret negative reactions and moments']
   }
 ];

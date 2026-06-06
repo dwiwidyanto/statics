@@ -4,8 +4,12 @@
   import { beamProblems } from '../../content/problems/beam-problems';
   import type { ProblemModel } from '../../lib/domain/models/types';
   import { locale, translations } from '../../lib/utils/i18n';
+  import { getProgressRepository } from '../../lib/services/localProgressRepository';
+  import ProblemSummaryCard from '../components/ProblemSummaryCard.svelte';
 
   export let onNavigate: (page: string, params?: any) => void;
+
+  const repo = getProgressRepository();
 
   function loadProblem(problem: ProblemModel) {
     onNavigate('practice', { problemId: problem.id });
@@ -13,6 +17,10 @@
 
   function loadGuidedProblem(problem: ProblemModel) {
     onNavigate(`guided/${problem.id}`);
+  }
+
+  function isCompleted(problemId: string): boolean {
+    return repo.getProblemProgress(problemId).completed;
   }
 </script>
 
@@ -43,8 +51,7 @@
       
       <div class="topics-list">
         {#each staticsTopics as topic}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <div 
+          <button 
             class="topic-card" 
             on:click={() => onNavigate(`concept/${topic.id}`)}
           >
@@ -53,7 +60,7 @@
               <p>{$locale === 'id' ? topic.summaryId || topic.summary : topic.summary}</p>
             </div>
             <span class="arrow">→</span>
-          </div>
+          </button>
         {/each}
       </div>
     </div>
@@ -68,22 +75,11 @@
 
       <div class="problems-list">
         {#each beamProblems as problem}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <div 
-            class="problem-card"
-            on:click={() => loadGuidedProblem(problem)}
-          >
-            <div class="problem-badge statically_determinate">
-              {$locale === 'id' ? 'Terpandu' : 'Guided'}
-            </div>
-            <h3>{$locale === 'id' ? problem.titleId || problem.title : problem.title}</h3>
-            <p>{$locale === 'id' ? problem.descriptionId || problem.description : problem.description}</p>
-            <div class="problem-meta">
-              <span>{translations[$locale].body}: {$locale === 'id' ? 'Balok' : 'Beam'} ({problem.body.width}m)</span>
-              <span>•</span>
-              <span>{$locale === 'id' ? 'Beban' : 'Beban'}: {problem.loads.length}</span>
-            </div>
-          </div>
+          <ProblemSummaryCard
+            {problem}
+            completed={isCompleted(problem.id)}
+            onClick={() => loadGuidedProblem(problem)}
+          />
         {/each}
       </div>
     </div>
@@ -98,28 +94,11 @@
 
       <div class="problems-list">
         {#each starterProblems as problem}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <div 
-            class="problem-card"
-            on:click={() => loadProblem(problem)}
-          >
-            <div class="problem-badge {problem.expectedDeterminacy}">
-              {#if problem.expectedDeterminacy === 'statically_determinate'}
-                {translations[$locale].determinate}
-              {:else if problem.expectedDeterminacy === 'statically_indeterminate'}
-                {translations[$locale].indeterminate}
-              {:else}
-                {translations[$locale].unstable}
-              {/if}
-            </div>
-            <h3>{$locale === 'id' ? problem.titleId || problem.title : problem.title}</h3>
-            <p>{$locale === 'id' ? problem.descriptionId || problem.description : problem.description}</p>
-            <div class="problem-meta">
-              <span>{translations[$locale].body}: {problem.body.type === 'beam' ? ($locale === 'id' ? 'Balok' : 'Beam') : ($locale === 'id' ? 'Plat' : 'Block')} ({problem.body.width}m)</span>
-              <span>•</span>
-              <span>{translations[$locale].supports}: {problem.supports.length}</span>
-            </div>
-          </div>
+          <ProblemSummaryCard
+            {problem}
+            completed={isCompleted(problem.id)}
+            onClick={() => loadProblem(problem)}
+          />
         {/each}
       </div>
     </div>
@@ -245,6 +224,9 @@
     justify-content: space-between;
     cursor: pointer;
     transition: all 0.2s;
+    width: 100%;
+    font-family: inherit;
+    text-align: left;
   }
 
   .topic-card:hover {
@@ -279,70 +261,7 @@
     gap: 1rem;
   }
 
-  .problem-card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1.25rem;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s;
-  }
 
-  .problem-card:hover {
-    border-color: var(--color-primary);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  }
-
-  .problem-badge {
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
-    text-transform: uppercase;
-  }
-
-  .problem-badge.statically_determinate {
-    background-color: rgba(16, 185, 129, 0.1);
-    color: var(--color-success);
-    border: 1px solid rgba(16, 185, 129, 0.2);
-  }
-
-  .problem-badge.statically_indeterminate {
-    background-color: rgba(245, 158, 11, 0.1);
-    color: var(--color-warning);
-    border: 1px solid rgba(245, 158, 11, 0.2);
-  }
-
-  .problem-badge.unstable {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: var(--color-error);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-  }
-
-  .problem-card h3 {
-    font-size: 1rem;
-    margin-right: 6.5rem;
-    margin-bottom: 0.4rem;
-  }
-
-  .problem-card p {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.75rem;
-    line-height: 1.4;
-  }
-
-  .problem-meta {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    display: flex;
-    gap: 0.5rem;
-    font-weight: 500;
-  }
 
   .animate-fade-in {
     animation: fadeIn 0.4s ease-out;

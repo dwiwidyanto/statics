@@ -52,6 +52,11 @@ export const starterProblems: ProblemModel[] = [
       'Jumlahkan momen di sekitar tumpuan A (x=0) untuk menghitung R_By secara langsung.',
       'Gunakan ΣFy = 0 untuk menghitung R_Ay dan ΣFx = 0 untuk menghitung R_Ax.',
     ],
+    topic: 'equilibrium',
+    difficulty: 'easy',
+    version: 1,
+    estimatedTimeMinutes: 10,
+    learningObjectives: ['Identify pin and roller reactions', 'Apply 2D equilibrium equations'],
   },
   {
     id: 'prob-cantilever-beam',
@@ -101,6 +106,11 @@ export const starterProblems: ProblemModel[] = [
       'Gaya ekivalen tersebut bekerja pada pusat berat beban merata, yaitu pada x = 1m + (3m / 2) = 2.5m.',
       'Hitung momen reaksi M_A dengan menjumlahkan momen di sekitar titik A.',
     ],
+    topic: 'equilibrium',
+    difficulty: 'medium',
+    version: 1,
+    estimatedTimeMinutes: 12,
+    learningObjectives: ['Replace UDL with equivalent point load', 'Solve fixed support reactions'],
   },
   {
     id: 'prob-indeterminate-beam',
@@ -160,6 +170,11 @@ export const starterProblems: ProblemModel[] = [
       'Karena kita hanya memiliki 3 persamaan kesetimbangan dalam 2D, kita memiliki 4 - 3 = 1 batasan redundan.',
       'Sistem ini tidak dapat diselesaikan dengan statika saja. Kita perlu persamaan deformasi untuk menentukan reaksinya.',
     ],
+    topic: 'determinacy',
+    difficulty: 'medium',
+    version: 1,
+    estimatedTimeMinutes: 8,
+    learningObjectives: ['Count reactions vs equations', 'Identify statically indeterminate systems'],
   },
   {
     id: 'prob-unstable-parallel',
@@ -221,5 +236,10 @@ export const starterProblems: ProblemModel[] = [
       'Gaya diagonal F_wind memiliki komponen horizontal yang mendorong ke kiri. Balok akan bergerak ke kiri.',
       'Ini adalah contoh klasik ketidakstabilan geometris karena garis kerja reaksi yang sejajar.',
     ],
+    topic: 'determinacy',
+    difficulty: 'hard',
+    version: 1,
+    estimatedTimeMinutes: 10,
+    learningObjectives: ['Recognize geometric instability', 'Understand parallel reaction lines'],
   }
 ];

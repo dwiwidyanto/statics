@@ -160,21 +160,7 @@
   let hasDiscontinuity = false;
   let snappedMeterX = 0;
 
-  function handleMouseMove(event: MouseEvent) {
-    const svgElement = event.currentTarget as SVGElement;
-    const rect = svgElement.getBoundingClientRect();
-    const clientX = event.clientX - rect.left;
-    
-    // Scale coordinate to SVG coordinate system
-    const scaleFactor = svgWidth / rect.width;
-    const svgX = clientX * scaleFactor;
-
-    // Check bounds
-    if (svgX < paddingX - 10 || svgX > svgWidth - paddingX + 10) {
-      hoverX = null;
-      return;
-    }
-
+  function updateHoverFromSvgX(svgX: number) {
     const rawMeterX = toMeterX(svgX);
     let targetX = rawMeterX;
 
@@ -206,8 +192,44 @@
     hasDiscontinuity = Math.abs(hoverValLeft - hoverValRight) > 1e-2;
   }
 
+  function handleMouseMove(event: MouseEvent) {
+    const svgElement = event.currentTarget as SVGElement;
+    const rect = svgElement.getBoundingClientRect();
+    const clientX = event.clientX - rect.left;
+    
+    // Scale coordinate to SVG coordinate system
+    const scaleFactor = svgWidth / rect.width;
+    const svgX = clientX * scaleFactor;
+
+    // Check bounds
+    if (svgX < paddingX - 10 || svgX > svgWidth - paddingX + 10) {
+      hoverX = null;
+      return;
+    }
+
+    updateHoverFromSvgX(svgX);
+  }
+
   function handleMouseLeave() {
     hoverX = null;
+  }
+
+  function handleKeyDown(event: KeyboardEvent) {
+    if (hoverX === null) {
+      hoverX = paddingX;
+    }
+    const step = 5; // pixels
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const newX = Math.max(paddingX, hoverX - step);
+      updateHoverFromSvgX(newX);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      const newX = Math.min(svgWidth - paddingX, hoverX + step);
+      updateHoverFromSvgX(newX);
+    } else if (event.key === 'Escape') {
+      hoverX = null;
+    }
   }
 </script>
 
@@ -217,12 +239,16 @@
     <span class="diagram-scale-text">max: {maxVal.toFixed(0)} {type === 'SFD' ? 'N' : 'N·m'}</span>
   </div>
 
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-noninteractive-element-interactions a11y-no-noninteractive-tabindex -->
   <svg 
     viewBox="0 0 {svgWidth} {svgHeight}" 
     class="diagram-svg"
+    role="application"
+    tabindex="0"
+    aria-label="{type === 'SFD' ? 'Shear Force' : 'Bending Moment'} Diagram. Use left and right arrow keys to inspect values along the beam."
     on:mousemove={handleMouseMove}
     on:mouseleave={handleMouseLeave}
+    on:keydown={handleKeyDown}
   >
     <defs>
       <!-- Area fills -->

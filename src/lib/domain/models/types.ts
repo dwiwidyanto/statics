@@ -108,6 +108,16 @@ export interface SolverResult {
 export type StabilityClassification = 'stable' | 'unstable';
 export type DeterminacyClassification = 'statically_determinate' | 'statically_indeterminate' | 'unstable';
 
+export type ProblemTopic = 'fbd' | 'equilibrium' | 'determinacy' | 'beam-internal-forces';
+export type ProblemDifficulty = 'easy' | 'medium' | 'hard';
+
+export interface ReferenceSolution {
+  reactions?: Record<string, number>;
+  keySections?: Array<{ x: number; shear?: number; moment?: number }>;
+  determinacy?: string;
+  stability?: string;
+}
+
 export interface ProblemModel {
   id: string;
   title: string;
@@ -121,4 +131,10 @@ export interface ProblemModel {
   expectedStability: StabilityClassification;
   hints: string[];
   hintsId?: string[];
+  topic: ProblemTopic;
+  difficulty: ProblemDifficulty;
+  version: number;
+  estimatedTimeMinutes?: number;
+  learningObjectives: string[];
+  referenceSolution?: ReferenceSolution;
 }

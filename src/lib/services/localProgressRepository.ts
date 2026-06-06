@@ -1,0 +1,203 @@
+/**
+ * localStorage-backed implementation of ProgressRepository.
+ *
+ * Storage key: staticslab.progress.v1
+ * Schema is versioned via ProgressData.schemaVersion so future
+ * migrations are possible without data loss.
+ */
+
+import type { ProgressRepository } from './progressRepository';
+import type {
+  Attempt,
+  ProblemProgress,
+  ProgressSummary,
+  ProgressData,
+  TopicStats,
+} from '../domain/progress/types';
+import { CURRENT_SCHEMA_VERSION } from '../domain/progress/types';
+import type { ProblemModel } from '../domain/models/types';
+
+const STORAGE_KEY = 'staticslab.progress.v1';
+
+function emptyData(): ProgressData {
+  return { schemaVersion: CURRENT_SCHEMA_VERSION, attempts: [] };
+}
+
+function loadData(): ProgressData {
+  if (typeof localStorage === 'undefined') return emptyData();
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return emptyData();
+
+    const parsed = JSON.parse(raw);
+
+    // Basic shape validation
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      typeof parsed.schemaVersion !== 'number' ||
+      !Array.isArray(parsed.attempts)
+    ) {
+      console.warn('[StaticsLab] Malformed progress data in localStorage. Resetting.');
+      localStorage.removeItem(STORAGE_KEY);
+      return emptyData();
+    }
+
+    // Future: handle schema migrations here
+    if (parsed.schemaVersion > CURRENT_SCHEMA_VERSION) {
+      console.warn(
+        `[StaticsLab] Progress schema v${parsed.schemaVersion} is newer than supported v${CURRENT_SCHEMA_VERSION}. Resetting.`
+      );
+      localStorage.removeItem(STORAGE_KEY);
+      return emptyData();
+    }
+
+    return parsed as ProgressData;
+  } catch {
+    console.warn('[StaticsLab] Failed to parse progress data. Resetting.');
+    localStorage.removeItem(STORAGE_KEY);
+    return emptyData();
+  }
+}
+
+function saveData(data: ProgressData): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn('[StaticsLab] Failed to save progress data:', e);
+  }
+}
+
+export class LocalProgressRepository implements ProgressRepository {
+  private data: ProgressData;
+
+  constructor() {
+    this.data = loadData();
+  }
+
+  saveAttempt(attempt: Attempt): void {
+    this.data.attempts.push(attempt);
+    saveData(this.data);
+  }
+
+  getAttempts(problemId?: string): Attempt[] {
+    if (problemId) {
+      return this.data.attempts.filter(a => a.problemId === problemId);
+    }
+    return [...this.data.attempts];
+  }
+
+  getProblemProgress(problemId: string): ProblemProgress {
+    const attempts = this.data.attempts.filter(a => a.problemId === problemId);
+
+    if (attempts.length === 0) {
+      return {
+        problemId,
+        bestScore: 0,
+        attemptsCount: 0,
+        completed: false,
+        lastAttemptAt: null,
+      };
+    }
+
+    let bestScore = 0;
+    let completed = false;
+    let lastAttemptAt = '';
+
+    for (const a of attempts) {
+      if (a.score > bestScore) bestScore = a.score;
+      if (a.completed) completed = true;
+      if (a.createdAt > lastAttemptAt) lastAttemptAt = a.createdAt;
+    }
+
+    return {
+      problemId,
+      bestScore,
+      attemptsCount: attempts.length,
+      completed,
+      lastAttemptAt,
+    };
+  }
+
+  getSummary(allProblems: ProblemModel[]): ProgressSummary {
+    const byTopic: Record<string, TopicStats> = {};
+
+    // Initialize topic buckets from all problems
+    for (const p of allProblems) {
+      const topic = (p as any).topic as string | undefined;
+      if (topic && !byTopic[topic]) {
+        byTopic[topic] = { total: 0, attempted: 0, completed: 0, averageBestScore: 0 };
+      }
+    }
+
+    let totalProblems = allProblems.length;
+    let attemptedProblems = 0;
+    let completedProblems = 0;
+    let totalBestScore = 0;
+    let scoredCount = 0;
+
+    // Per-topic accumulators
+    const topicScores: Record<string, { sum: number; count: number }> = {};
+
+    for (const p of allProblems) {
+      const topic = (p as any).topic as string | undefined;
+      if (topic && byTopic[topic]) {
+        byTopic[topic].total++;
+      }
+
+      const progress = this.getProblemProgress(p.id);
+
+      if (progress.attemptsCount > 0) {
+        attemptedProblems++;
+        totalBestScore += progress.bestScore;
+        scoredCount++;
+
+        if (topic && byTopic[topic]) {
+          byTopic[topic].attempted++;
+          if (!topicScores[topic]) topicScores[topic] = { sum: 0, count: 0 };
+          topicScores[topic].sum += progress.bestScore;
+          topicScores[topic].count++;
+        }
+      }
+
+      if (progress.completed) {
+        completedProblems++;
+        if (topic && byTopic[topic]) {
+          byTopic[topic].completed++;
+        }
+      }
+    }
+
+    // Compute topic averages
+    for (const [topic, scores] of Object.entries(topicScores)) {
+      if (byTopic[topic] && scores.count > 0) {
+        byTopic[topic].averageBestScore = scores.sum / scores.count;
+      }
+    }
+
+    return {
+      totalProblems,
+      attemptedProblems,
+      completedProblems,
+      averageBestScore: scoredCount > 0 ? totalBestScore / scoredCount : 0,
+      byTopic,
+    };
+  }
+
+  reset(): void {
+    this.data = emptyData();
+    saveData(this.data);
+  }
+}
+
+// Module-level singleton
+let instance: LocalProgressRepository | null = null;
+
+export function getProgressRepository(): ProgressRepository {
+  if (!instance) {
+    instance = new LocalProgressRepository();
+  }
+  return instance;
+}

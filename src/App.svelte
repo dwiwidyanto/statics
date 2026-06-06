@@ -4,52 +4,60 @@
   import ConceptPage from './app/pages/ConceptPage.svelte';
   import PracticePage from './app/pages/PracticePage.svelte';
   import GuidedWorkspace from './app/pages/GuidedWorkspace.svelte';
+  import ProgressPage from './app/pages/ProgressPage.svelte';
+  import { currentRoute, navigateTo, legacyToRoute } from './app/routing/router';
+  import type { Route } from './app/routing/router';
 
-  // Routing State
-  let currentPage = 'dashboard';
-  let currentPageParams: any = {};
+  // Subscribe to the router store
+  let route: Route = { page: 'dashboard' };
+  currentRoute.subscribe(r => { route = r; });
 
+  /**
+   * Legacy-compatible navigate function.
+   * All existing components call onNavigate(page, params).
+   * This bridges to the new hash-based router.
+   */
   function navigate(page: string, params: any = {}) {
-    currentPage = page;
-    currentPageParams = params;
-    
-    // Smooth scroll to top on navigation
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo(legacyToRoute(page, params));
   }
 
-  // Parse path out of current page string
-  $: isConcept = currentPage.startsWith('concept/');
-  $: activeTopicId = isConcept ? currentPage.substring(8) : null;
-  $: isGuided = currentPage.startsWith('guided/');
-  $: activeGuidedProblemId = isGuided ? currentPage.substring(7) : null;
+  // Derived route info for template conditionals
+  $: currentPage = (() => {
+    switch (route.page) {
+      case 'dashboard': return 'dashboard';
+      case 'practice': return 'practice';
+      case 'guided': return `guided/${route.problemId}`;
+      case 'concept': return `concept/${route.topicId}`;
+      case 'progress': return 'progress';
+      default: return 'dashboard';
+    }
+  })();
 </script>
 
 <AppShell 
   {currentPage} 
-  {currentPageParams}
   onNavigate={navigate}
 >
-  {#if currentPage === 'dashboard'}
+  {#if route.page === 'dashboard'}
     <Dashboard onNavigate={navigate} />
+  {:else if route.page === 'concept'}
+    <ConceptPage 
+      topicId={route.topicId} 
+      onNavigate={navigate} 
+    />
+  {:else if route.page === 'practice'}
+    <PracticePage 
+      initialProblemId={route.problemId || null} 
+      onNavigate={navigate}
+    />
+  {:else if route.page === 'guided'}
+    <GuidedWorkspace 
+      problemId={route.problemId} 
+      onNavigate={navigate}
+    />
+  {:else if route.page === 'progress'}
+    <ProgressPage onNavigate={navigate} />
   {:else}
-    {#if isConcept}
-      <ConceptPage 
-        topicId={activeTopicId || ''} 
-        onNavigate={navigate} 
-      />
-    {:else if currentPage === 'practice'}
-      <!-- We load the practice page, optionally passing a problemId parameter if it was sent -->
-      <PracticePage 
-        initialProblemId={currentPageParams.problemId || null} 
-        onNavigate={navigate}
-      />
-    {:else if isGuided}
-      <GuidedWorkspace 
-        problemId={activeGuidedProblemId || ''} 
-        onNavigate={navigate}
-      />
-    {:else}
-      <Dashboard onNavigate={navigate} />
-    {/if}
+    <Dashboard onNavigate={navigate} />
   {/if}
 </AppShell>

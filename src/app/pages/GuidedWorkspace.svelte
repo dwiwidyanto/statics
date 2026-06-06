@@ -8,6 +8,14 @@
   import { locale, translations } from '../../lib/utils/i18n';
   import type { Reaction, Support } from '../../lib/domain/models/types';
   import { getReactionsForSupport } from '../../lib/domain/supports/support';
+  import StepperBar from '../components/StepperBar.svelte';
+  import ReactionInputPanel from '../components/ReactionInputPanel.svelte';
+  import { getProgressRepository } from '../../lib/services/localProgressRepository';
+  import { scoreReactionAnswers } from '../../lib/domain/progress/scoring';
+  import type { Attempt } from '../../lib/domain/progress/types';
+
+  const repo = getProgressRepository();
+  let showToast = false;
 
   export let problemId: string;
   export let onNavigate: (page: string, params?: any) => void;
@@ -48,7 +56,7 @@
   })();
 
   function handleVerifyReactions() {
-    if (!solverResult) return;
+    if (!solverResult || !problem) return;
     
     // Check if user has entered all reactions
     let allFilled = true;
@@ -66,27 +74,41 @@
       return;
     }
 
-    // Verify values (allow small absolute tolerance of 1 N or N*m)
-    let allCorrect = true;
+    // Convert inputs to numbers
+    const answers: Record<string, number> = {};
     for (const key of reactionKeys) {
-      const expectedVal = solverResult.reactions[key] ?? 0;
-      const userVal = parseFloat(userReactionsInput[key]);
-      
-      if (isNaN(userVal) || Math.abs(userVal - expectedVal) > 2.0) {
-        allCorrect = false;
-        break;
-      }
+      answers[key] = parseFloat(userReactionsInput[key]);
     }
 
-    if (allCorrect) {
+    // Score reactions
+    const scoring = scoreReactionAnswers(answers, solverResult.reactions);
+    
+    // Save attempt
+    const attempt: Attempt = {
+      id: Math.random().toString(36).substring(2, 9),
+      problemId: problem.id,
+      problemVersion: problem.version,
+      createdAt: new Date().toISOString(),
+      answers,
+      score: scoring.score,
+      feedback: scoring.feedback,
+      completed: scoring.score >= 0.999
+    };
+    repo.saveAttempt(attempt);
+
+    if (attempt.completed) {
       showReactionsSolved = true;
       reactionInputError = '';
-      // Update reactions value list for rendering on the FBD canvas
+      showToast = true;
+      setTimeout(() => { showToast = false; }, 3000);
       activeStep = 4; // Auto advance to SFD once solved
     } else {
-      reactionInputError = $locale === 'id'
-        ? 'Beberapa nilai reaksi salah. Periksa kembali persamaan kesetimbangan Anda dan coba lagi.'
-        : 'Some reaction values are incorrect. Double-check your equilibrium calculations and try again.';
+      reactionInputError = scoring.feedback
+        .filter(f => !f.includes('is correct'))
+        .join('\n') || 
+        ($locale === 'id'
+          ? 'Beberapa nilai reaksi salah. Periksa kembali persamaan kesetimbangan Anda.'
+          : 'Some reaction values are incorrect. Double-check your equilibrium equations.');
     }
   }
 
@@ -188,39 +210,19 @@
 </script>
 
 <div class="guided-container">
+  {#if showToast}
+    <div class="toast animate-fade-in" role="status" aria-live="polite">
+      {$locale === 'id' ? '✅ Progres berhasil disimpan!' : '✅ Saved to progress!'}
+    </div>
+  {/if}
+
   <!-- Stepper Indicator -->
-  <div class="stepper-bar">
-    {#each Array(totalSteps) as _, i}
-      <button 
-        class="step-dot {activeStep === i + 1 ? 'active' : ''} {activeStep > i + 1 ? 'completed' : ''}"
-        on:click={() => {
-          if (i + 1 <= 3 || showReactionsSolved) {
-            activeStep = i + 1;
-          }
-        }}
-      >
-        <span class="dot-num">{i + 1}</span>
-        <span class="dot-label">
-          {#if i === 0}
-            {$locale === 'id' ? 'Soal' : 'Problem'}
-          {:else if i === 1}
-            FBD
-          {:else if i === 2}
-            {$locale === 'id' ? 'Reaksi' : 'Reactions'}
-          {:else if i === 3}
-            SFD
-          {:else if i === 4}
-            BMD
-          {:else}
-            {$locale === 'id' ? 'Ulasan' : 'Review'}
-          {/if}
-        </span>
-      </button>
-      {#if i < totalSteps - 1}
-        <div class="step-line {activeStep > i + 1 ? 'active' : ''}"></div>
-      {/if}
-    {/each}
-  </div>
+  <StepperBar
+    {activeStep}
+    {totalSteps}
+    {showReactionsSolved}
+    onStepClick={(step) => activeStep = step}
+  />
 
   {#if problem && solverResult}
     <!-- Main Workspace Split Grid -->
@@ -353,61 +355,14 @@
 
         <!-- STEP 3: REACTIONS SOLVER -->
         {:else if activeStep === 3}
-          <div class="step-card animate-fade-in">
-            <span class="step-badge">{$locale === 'id' ? 'Langkah 3' : 'Step 3'}: {$locale === 'id' ? 'Kesetimbangan Statis' : 'Static Equilibrium'}</span>
-            <h2>{$locale === 'id' ? 'Hitung Nilai Reaksi Tumpuan' : 'Calculate Support Reactions'}</h2>
-            
-            <p class="explanation">
-              {$locale === 'id'
-                ? 'Gunakan hukum kesetimbangan statis 2D di bawah untuk menghitung nilai reaksi. Masukkan jawaban Anda pada kotak di bawah:'
-                : 'Apply 2D static equilibrium equations to solve for the support reactions. Enter your answers in the boxes below:'}
-            </p>
-
-            <div class="reactions-input-container">
-              {#each reactionKeys as key}
-                <div class="input-group">
-                  <label for="rx-{key}">
-                    <strong>{key}</strong>
-                    ({key.startsWith('M_') ? 'N·m' : 'N'})
-                  </label>
-                  <input 
-                    id="rx-{key}" 
-                    type="number" 
-                    step="any"
-                    placeholder="0"
-                    bind:value={userReactionsInput[key]}
-                    class="form-control"
-                    disabled={showReactionsSolved}
-                  />
-                </div>
-              {/each}
-            </div>
-
-            {#if reactionInputError}
-              <div class="alert alert-important animate-fade-in">
-                <p>{reactionInputError}</p>
-              </div>
-            {/if}
-
-            {#if !showReactionsSolved}
-              <button class="btn btn-primary w-full mt-3" on:click={handleVerifyReactions}>
-                {$locale === 'id' ? 'Periksa Jawaban Reaksi' : 'Verify Reaction Values'}
-              </button>
-            {:else}
-              <div class="alert alert-tip animate-fade-in">
-                <p><strong>✅ {$locale === 'id' ? 'Semua reaksi benar!' : 'All reactions are correct!'}</strong></p>
-              </div>
-            {/if}
-
-            <div class="accordion-hint">
-              <details>
-                <summary>💡 {$locale === 'id' ? 'Tampilkan Cara Penyelesaian' : 'Show Step-by-Step Solution'}</summary>
-                <div class="hint-content">
-                  {@html reactionExplanation.replace(/\n/g, '<br/>')}
-                </div>
-              </details>
-            </div>
-          </div>
+          <ReactionInputPanel
+            {reactionKeys}
+            bind:userReactionsInput
+            {showReactionsSolved}
+            {reactionInputError}
+            {reactionExplanation}
+            onVerify={handleVerifyReactions}
+          />
 
         <!-- STEP 4: SHEAR FORCE DIAGRAM -->
         {:else if activeStep === 4}
@@ -549,81 +504,7 @@
     gap: 1.5rem;
   }
 
-  /* Stepper Header */
-  .stepper-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    padding: 1.25rem 2rem;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  }
 
-  .step-dot {
-    background: none;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-    cursor: pointer;
-    position: relative;
-    z-index: 2;
-  }
-
-  .dot-num {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background-color: var(--bg-primary);
-    border: 2px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    transition: all 0.2s;
-  }
-
-  .step-dot.active .dot-num {
-    background-color: var(--color-primary);
-    border-color: var(--color-primary);
-    color: white;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
-  }
-
-  .step-dot.completed .dot-num {
-    background-color: var(--color-success);
-    border-color: var(--color-success);
-    color: white;
-  }
-
-  .dot-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-  }
-
-  .step-dot.active .dot-label {
-    color: var(--color-primary);
-    font-weight: 700;
-  }
-
-  .step-line {
-    flex: 1;
-    height: 3px;
-    background-color: var(--border-color);
-    margin: 0 1rem;
-    transform: translateY(-10px);
-    transition: background-color 0.2s;
-  }
-
-  .step-line.active {
-    background-color: var(--color-success);
-  }
 
   /* Workspace Grid */
   .workspace-grid {
@@ -796,51 +677,7 @@
     margin-top: 0.5rem;
   }
 
-  .reactions-input-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 0.75rem;
-  }
 
-  .input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .input-group label {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-  }
-
-  .form-control {
-    width: 100%;
-  }
-
-  .accordion-hint {
-    border-top: 1px solid var(--border-color);
-    padding-top: 0.75rem;
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-  }
-
-  .accordion-hint summary {
-    cursor: pointer;
-    font-weight: 600;
-    color: var(--color-primary);
-    user-select: none;
-  }
-
-  .hint-content {
-    margin-top: 0.5rem;
-    padding: 0.75rem;
-    background-color: var(--bg-primary);
-    border-radius: 6px;
-    font-family: monospace;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    white-space: pre-wrap;
-  }
 
   .learning-tips {
     background-color: var(--bg-primary);
@@ -935,6 +772,20 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: #10b981;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    z-index: 100;
+    font-weight: 600;
+    font-size: 0.9rem;
   }
 
   .error-card {

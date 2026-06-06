@@ -62,12 +62,16 @@
   }
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
 <div class="canvas-wrapper">
+  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
   <svg 
     viewBox="0 0 {svgWidth} {svgHeight}" 
     class="fbd-svg"
+    role="application"
+    aria-label="Interactive Free-body Diagram Canvas"
     on:click={handleSvgClick}
+    on:keydown={(e) => { if (e.key === 'Escape') onCanvasClick(0, 0); }}
   >
     <defs>
       <!-- Force Arrowhead Marker -->
@@ -149,10 +153,13 @@
     {#each supports as support}
       {@const sx = toSvgX(support.position.x)}
       {@const sy = toSvgY(support.position.y)}
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <g 
         class="support-node cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="Support {support.label} ({support.type})"
         on:click|stopPropagation={() => onItemSelect(support.id, 'support')}
+        on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') onItemSelect(support.id, 'support'); }}
         opacity={selectedItemId && selectedItemId !== support.id ? 0.6 : 1.0}
       >
         {#if support.type === 'pin'}
@@ -210,10 +217,13 @@
 
     <!-- 3. Applied Loads -->
     {#each loads as load}
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <g 
         class="load-node cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="Load {load.label} ({load.type})"
         on:click|stopPropagation={() => onItemSelect(load.id, 'load')}
+        on:keydown|stopPropagation={(e) => { if (e.key === 'Enter' || e.key === ' ') onItemSelect(load.id, 'load'); }}
         opacity={selectedItemId && selectedItemId !== load.id ? 0.6 : 1.0}
       >
         {#if load.type === 'point_force'}

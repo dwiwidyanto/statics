@@ -20,6 +20,18 @@ This app is optimized for lightweight execution on low-spec student devices and 
 - **Educational Explanations Panel**: Gives student-friendly feedback explaining *why* a configuration is stable, indeterminate, or unstable.
 - **Problem presets**: Includes simply-supported, cantilever, indeterminate, and geometrically unstable preset layouts.
 
+### Stage 2A: Guided Beam Workspace & Diagrams
+- **15 Guided Problems**: Structured curriculum ranging from simple point loads to complex distributed loads and moments.
+- **Shear & Bending Diagrams**: Programmatic rendering of Shear Force Diagrams (SFD) and Bending Moment Diagrams (BMD) using exact analytical equations.
+- **Inspection Tool**: Interactive cursor tracker showing coordinates and shear/moment values at any point along the beam.
+
+### Stage 2B: Practice Progression & Local Progress
+- **Hash-Based Router**: URL deep-linking support (`#/guided/beam-simply-supported-midpoint`) for sharing specific problems and saving navigation history.
+- **Local Progress Repository**: Abstracted data interface storing student attempts in `localStorage` with automated data-corruption recovery.
+- **Scoring & Tolerance Engine**: Compares student reaction inputs against reference solutions, supporting absolute (2 N) and relative (1%) tolerances and providing sign-reversal hints.
+- **Gamified Dashboard**: Visual progress summary with completion indicators, topic performance analysis, and one-click "Continue Next Unsolved Problem".
+- **Keyboard Accessibility**: Full keyboard navigation support (tabindex/focus/keydown handlers) on curriculum selection, FBD canvas nodes, and diagram hover inspectors.
+
 ---
 
 ## 📂 Project Architecture

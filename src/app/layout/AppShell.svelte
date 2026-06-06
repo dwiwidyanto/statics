@@ -4,7 +4,6 @@
   import { locale, translations } from '../../lib/utils/i18n';
   
   export let currentPage: string;
-  export let currentPageParams: any = {};
   export let onNavigate: (page: string, params?: any) => void;
 
   let isDarkMode = false;
@@ -50,23 +49,29 @@
     <nav class="sidebar-nav">
       <div class="nav-section-title">{translations[$locale].workspace}</div>
       
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <div 
+      <button 
         class="nav-item {currentPage === 'dashboard' ? 'active' : ''}"
         on:click={() => onNavigate('dashboard')}
       >
         <span class="nav-icon">🏠</span>
         <span>{translations[$locale].dashboard}</span>
-      </div>
+      </button>
 
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <div 
+      <button 
         class="nav-item {currentPage === 'practice' ? 'active' : ''}"
         on:click={() => onNavigate('practice')}
       >
         <span class="nav-icon">📐</span>
         <span>{translations[$locale].sandbox}</span>
-      </div>
+      </button>
+
+      <button 
+        class="nav-item {currentPage === 'progress' ? 'active' : ''}"
+        on:click={() => onNavigate('progress')}
+      >
+        <span class="nav-icon">📊</span>
+        <span>{$locale === 'id' ? 'Progres' : 'Progress'}</span>
+      </button>
 
       <!-- External Home Link -->
       <a 
@@ -81,8 +86,7 @@
 
       <div class="nav-section-title">{translations[$locale].guidedWorkspace}</div>
       {#each beamProblems as pb}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div 
+        <button 
           class="nav-item concept-nav-item {currentPage === `guided/${pb.id}` ? 'active' : ''}"
           on:click={() => onNavigate(`guided/${pb.id}`)}
           title={$locale === 'id' ? pb.titleId || pb.title : pb.title}
@@ -91,13 +95,12 @@
           <span class="truncate">
             {$locale === 'id' ? (pb.titleId || pb.title).replace('Guided Problem ', '').replace('Soal Terpandu ', '') : pb.title.replace('Guided Problem ', '')}
           </span>
-        </div>
+        </button>
       {/each}
 
       <div class="nav-section-title">{translations[$locale].conceptLibrary}</div>
       {#each staticsTopics as topic}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div 
+        <button 
           class="nav-item concept-nav-item {currentPage === `concept/${topic.id}` ? 'active' : ''}"
           on:click={() => onNavigate(`concept/${topic.id}`)}
         >
@@ -105,11 +108,11 @@
           <span class="truncate">
             {$locale === 'id' ? (topic.titleId || topic.title).substring(3) : topic.title.substring(3)}
           </span>
-        </div>
+        </button>
       {/each}
 
       <div class="nav-section-title">{translations[$locale].futureExpansion}</div>
-      <div class="nav-item disabled">
+      <div class="nav-item disabled" aria-disabled="true">
         <span class="nav-icon">🕸️</span>
         <span>Truss Solver <small class="coming-soon">{translations[$locale].comingSoon}</small></span>
       </div>
@@ -231,6 +234,12 @@
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.2s;
+    background: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+    line-height: inherit;
   }
 
   .nav-item:hover:not(.disabled) {
