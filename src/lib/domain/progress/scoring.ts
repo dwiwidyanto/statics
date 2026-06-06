@@ -124,3 +124,11 @@ export function scoreReactionAnswers(
     totalCount,
   };
 }
+
+/**
+ * Check if a reaction input value is blank, null, or undefined.
+ * Accepts numeric 0 and negative values as valid (not blank).
+ */
+export function isBlankReactionInput(value: unknown): boolean {
+  return value === undefined || value === null || String(value).trim() === '';
+}

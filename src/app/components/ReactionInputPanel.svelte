@@ -2,7 +2,7 @@
   import { locale } from '../../lib/utils/i18n';
 
   export let reactionKeys: string[];
-  export let userReactionsInput: Record<string, string>;
+  export let userReactionsInput: Record<string, string | number>;
   export let showReactionsSolved: boolean;
   export let reactionInputError: string;
   export let reactionExplanation: string;

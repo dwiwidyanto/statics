@@ -11,7 +11,7 @@
   import StepperBar from '../components/StepperBar.svelte';
   import ReactionInputPanel from '../components/ReactionInputPanel.svelte';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
-  import { scoreReactionAnswers } from '../../lib/domain/progress/scoring';
+  import { scoreReactionAnswers, isBlankReactionInput } from '../../lib/domain/progress/scoring';
   import type { Attempt } from '../../lib/domain/progress/types';
 
   const repo = getProgressRepository();
@@ -32,7 +32,7 @@
   const totalSteps = 6;
 
   // Student reaction solving states (interactive check)
-  let userReactionsInput: Record<string, string> = {};
+  let userReactionsInput: Record<string, string | number> = {};
   let showReactionsSolved = false;
   let reactionInputError = '';
 
@@ -61,7 +61,7 @@
     // Check if user has entered all reactions
     let allFilled = true;
     for (const key of reactionKeys) {
-      if (!userReactionsInput[key] || userReactionsInput[key].trim() === '') {
+      if (isBlankReactionInput(userReactionsInput[key])) {
         allFilled = false;
         break;
       }
@@ -74,10 +74,11 @@
       return;
     }
 
-    // Convert inputs to numbers
+    // Convert inputs to numbers robustly
     const answers: Record<string, number> = {};
     for (const key of reactionKeys) {
-      answers[key] = parseFloat(userReactionsInput[key]);
+      const raw = userReactionsInput[key];
+      answers[key] = typeof raw === 'number' ? raw : parseFloat(String(raw));
     }
 
     // Score reactions
