@@ -14,6 +14,9 @@ export interface Attempt {
   score: number; // 0 to 1
   feedback: string[];
   completed: boolean;
+  topic?: string;
+  skillBreakdown?: Record<string, number>;
+  misconceptions?: string[];
 }
 
 /** Aggregated progress for a single problem. */

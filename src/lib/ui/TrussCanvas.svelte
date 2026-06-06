@@ -12,9 +12,26 @@
   export let reactions: Record<string, number> = {};
   export let isSolved = false;
 
-  // Selection/Focus state
-  let selectedJointId: string | null = null;
+  // Guided-mode props (optional — default to inactive so existing callers are unaffected)
+  /** Joint ID highlighted as "currently being solved" in guided mode. */
+  export let selectedJointId: string | null = null;
+  /** Member IDs that have been solved in guided mode (rendered with green tint). */
+  export let solvedMemberIds: string[] = [];
+  /** Member IDs highlighted as zero-force selections in guided mode (blue-dashed). */
+  export let highlightZeroForceIds: string[] = [];
+  /** Suppress tension/compression coloring during early guided steps. */
+  export let hideMemberForces: boolean = false;
+  /** Joint IDs recommended as next solvable joints (subtle glow). */
+  export let recommendedJointIds: string[] = [];
+
+  // Internal selection state (for inspector overlay clicks — separate from guided selectedJointId)
+  let inspectorJointId: string | null = null;
   let selectedMemberId: string | null = null;
+
+  // Derived sets for O(1) lookup
+  $: solvedMemberSet = new Set(solvedMemberIds);
+  $: highlightZeroSet = new Set(highlightZeroForceIds);
+  $: recommendedJointSet = new Set(recommendedJointIds);
 
   // SVG parameters
   const svgWidth = 750;
@@ -49,12 +66,29 @@
   // Helper map
   $: jointsMap = new Map<string, TrussJoint>(joints.map(j => [j.id, j]));
 
-  // Get force state
-  function getMemberForceState(memberId: string): 'tension' | 'compression' | 'zero' | 'unsolved' {
-    if (!isSolved || memberForces[memberId] === undefined) return 'unsolved';
+  // Get force state — respects hideMemberForces for guided mode
+  function getMemberForceState(memberId: string): 'tension' | 'compression' | 'zero' | 'unsolved' | 'guided-solved' | 'guided-zero-highlight' {
+    // Guided-mode overrides
+    if (highlightZeroSet.has(memberId)) return 'guided-zero-highlight';
+    if (hideMemberForces && solvedMemberSet.has(memberId)) return 'guided-solved';
+    if (hideMemberForces) return 'unsolved';
+
+    // Normal mode
+    if (!isSolved && !solvedMemberSet.has(memberId)) return 'unsolved';
     const force = memberForces[memberId];
+    if (force === undefined) {
+      if (solvedMemberSet.has(memberId)) return 'guided-solved';
+      return 'unsolved';
+    }
     if (Math.abs(force) < 1e-2) return 'zero';
     return force > 0 ? 'tension' : 'compression';
+  }
+
+  // Joint visual class for guided mode
+  function getGuidedJointClass(jointId: string): string {
+    if (selectedJointId === jointId) return 'guided-active';
+    if (recommendedJointSet.has(jointId)) return 'guided-recommended';
+    return '';
   }
 
   // Draw force vector arrow pointing towards a joint
@@ -86,6 +120,8 @@
     role="img"
     aria-label="Structural diagram of the planar truss showing joints, members, support reactions, and external loads"
   >
+    <title>Planar Truss Structural Diagram</title>
+    <desc>Interactive SVG diagram showing {joints.length} joints, {members.length} members, support conditions, and applied loads for structural analysis.</desc>
     <defs>
       <!-- External Force Arrowhead -->
       <marker id="arrow-force" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -116,9 +152,9 @@
           class="member-group state-{state} {isSelected ? 'selected' : ''}"
           role="button"
           tabindex="0"
-          aria-label="Member {m.label}. {state === 'unsolved' ? 'Unsolved' : `Force: ${Math.abs(forceVal)} N in ${state === 'tension' ? 'Tension' : state === 'compression' ? 'Compression' : 'Zero-Force'}`}"
-          on:click={() => { selectedMemberId = m.id; selectedJointId = null; }}
-          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { selectedMemberId = m.id; selectedJointId = null; } }}
+          aria-label="Member {m.label}. {state === 'unsolved' ? 'Unsolved' : `Force: ${Math.abs(forceVal ?? 0)} N in ${state === 'tension' ? 'Tension' : state === 'compression' ? 'Compression' : 'Zero-Force'}`}"
+          on:click={() => { selectedMemberId = m.id; inspectorJointId = null; }}
+          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { selectedMemberId = m.id; inspectorJointId = null; } }}
         >
           <!-- Member line shadow for outline/hover -->
           <line 
@@ -258,15 +294,16 @@
     {#each joints as j}
       {@const jx = toSvgX(j.position.x)}
       {@const jy = toSvgY(j.position.y)}
-      {@const isSelected = selectedJointId === j.id}
+      {@const isInspecting = inspectorJointId === j.id}
+      {@const guidedClass = getGuidedJointClass(j.id)}
 
       <g 
-        class="joint-group {isSelected ? 'selected' : ''}"
+        class="joint-group {isInspecting ? 'selected' : ''} {guidedClass}"
         role="button"
         tabindex="0"
         aria-label="Joint {j.label} at coordinate ({j.position.x}, {j.position.y})"
-        on:click={() => { selectedJointId = j.id; selectedMemberId = null; }}
-        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { selectedJointId = j.id; selectedMemberId = null; } }}
+        on:click={() => { inspectorJointId = j.id; selectedMemberId = null; }}
+        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { inspectorJointId = j.id; selectedMemberId = null; } }}
       >
         <!-- Outer circle for selection ring -->
         <circle cx={jx} cy={jy} r="10" class="joint-focus-ring" />
@@ -280,13 +317,13 @@
   </svg>
 
   <!-- Inspector Overlay (for focused elements) -->
-  {#if selectedJointId}
-    {@const j = joints.find(jt => jt.id === selectedJointId)}
+  {#if inspectorJointId}
+    {@const j = joints.find(jt => jt.id === inspectorJointId)}
     {#if j}
       <div class="canvas-inspector">
         <strong>{$locale === 'id' ? 'Titik Hubung' : 'Joint'} {j.label}</strong>:
         ({j.position.x} m, {j.position.y} m)
-        <button class="btn-close" on:click={() => selectedJointId = null}>×</button>
+        <button class="btn-close" on:click={() => inspectorJointId = null}>×</button>
       </div>
     {/if}
   {:else if selectedMemberId}
@@ -365,6 +402,19 @@
     stroke-width: 3px;
   }
 
+  /* Guided-mode: solved member (green tint) */
+  .state-guided-solved .member-line {
+    stroke: #10b981;
+    stroke-width: 4px;
+  }
+
+  /* Guided-mode: zero-force highlight (blue dashed) */
+  .state-guided-zero-highlight .member-line {
+    stroke: #3b82f6;
+    stroke-dasharray: 6, 3;
+    stroke-width: 3.5px;
+  }
+
   /* Labels */
   .label-bg {
     fill: var(--bg-secondary);
@@ -409,6 +459,29 @@
   .joint-group:focus-visible .joint-focus-ring {
     stroke: var(--color-primary, #2563eb);
     fill: rgba(37, 99, 235, 0.1);
+  }
+
+  /* Guided-mode: actively solving joint (pulsing ring) */
+  .joint-group.guided-active .joint-circle {
+    fill: #f59e0b;
+    stroke: #f59e0b;
+  }
+
+  .joint-group.guided-active .joint-focus-ring {
+    stroke: #f59e0b;
+    fill: rgba(245, 158, 11, 0.15);
+    animation: pulse-ring 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% { r: 10; opacity: 1; }
+    50% { r: 14; opacity: 0.6; }
+  }
+
+  /* Guided-mode: recommended next joints (subtle glow) */
+  .joint-group.guided-recommended .joint-focus-ring {
+    stroke: #3b82f6;
+    fill: rgba(59, 130, 246, 0.1);
   }
 
   .joint-label-text {

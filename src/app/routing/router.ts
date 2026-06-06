@@ -28,7 +28,8 @@ export type Route =
   | { page: 'guided'; problemId: string }
   | { page: 'concept'; topicId: string }
   | { page: 'progress' }
-  | { page: 'trusses'; problemId?: string };
+  | { page: 'trusses'; problemId?: string }
+  | { page: 'trusses-guided'; problemId: string };
 
 // ---------------------------------------------------------------------------
 // Parsing
@@ -66,6 +67,9 @@ export function parseRoute(hash: string): Route {
       return { page: 'progress' };
 
     case 'trusses':
+      if (segments.length >= 3 && segments[2] === 'guided') {
+        return { page: 'trusses-guided', problemId: segments[1] };
+      }
       return segments.length > 1
         ? { page: 'trusses', problemId: segments.slice(1).join('/') }
         : { page: 'trusses' };
@@ -94,6 +98,8 @@ export function buildHash(route: Route): string {
       return '#/progress';
     case 'trusses':
       return route.problemId ? `#/trusses/${route.problemId}` : '#/trusses';
+    case 'trusses-guided':
+      return `#/trusses/${route.problemId}/guided`;
   }
 }
 
@@ -153,6 +159,9 @@ export function legacyToRoute(page: string, params?: { problemId?: string }): Ro
   if (page === 'trusses') return { page: 'trusses', problemId: params?.problemId };
   if (page.startsWith('guided/')) return { page: 'guided', problemId: page.substring(7) };
   if (page.startsWith('concept/')) return { page: 'concept', topicId: page.substring(8) };
+  if (page.startsWith('trusses/') && page.endsWith('/guided')) {
+    return { page: 'trusses-guided', problemId: page.substring(8, page.length - 7) };
+  }
   if (page.startsWith('trusses/')) return { page: 'trusses', problemId: page.substring(8) };
   return { page: 'dashboard' };
 }

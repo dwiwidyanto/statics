@@ -6,6 +6,7 @@
   import GuidedWorkspace from './app/pages/GuidedWorkspace.svelte';
   import ProgressPage from './app/pages/ProgressPage.svelte';
   import TrussPracticePage from './app/pages/TrussPracticePage.svelte';
+  import TrussGuidedWorkspace from './app/pages/TrussGuidedWorkspace.svelte';
   import { currentRoute, navigateTo, legacyToRoute } from './app/routing/router';
   import type { Route } from './app/routing/router';
 
@@ -31,6 +32,7 @@
       case 'concept': return `concept/${route.topicId}`;
       case 'progress': return 'progress';
       case 'trusses': return route.problemId ? `trusses/${route.problemId}` : 'trusses';
+      case 'trusses-guided': return `trusses/${route.problemId}/guided`;
       default: return 'dashboard';
     }
   })();
@@ -62,6 +64,11 @@
   {:else if route.page === 'trusses'}
     <TrussPracticePage 
       problemId={route.problemId || null} 
+      onNavigate={navigate}
+    />
+  {:else if route.page === 'trusses-guided'}
+    <TrussGuidedWorkspace
+      problemId={route.problemId}
       onNavigate={navigate}
     />
   {:else}

@@ -68,6 +68,33 @@
     'trusses': { en: 'Trusses', id: 'Rangka Batang' },
   };
 
+  const misconceptionDetails: Record<string, { title: { id: string; en: string }; desc: { id: string; en: string } }> = {
+    sign_reversed: {
+      title: { id: 'Tanda Terbalik (+/-)', en: 'Sign Convention Reversal' },
+      desc: { id: 'Ingat bahwa gaya Tarik bernilai Positif (+) dan Tekan bernilai Negatif (-). Periksa kembali persamaan ΣFx dan ΣFy Anda.', en: 'Remember that Tension forces are Positive (+) and Compression are Negative (-). Check your ΣFx and ΣFy sign assignments.' }
+    },
+    zero_force_missed: {
+      title: { id: 'Batang Nol Terlewat', en: 'Missed Zero-Force Member' },
+      desc: { id: 'Beberapa batang berdaya nol tidak teridentifikasi. Tinjau kembali Aturan 1 dan Aturan 2 pada titik hubung bebas.', en: 'Some zero-force members were missed. Review Rule 1 and Rule 2 for unloaded, unsupported joints.' }
+    },
+    zero_force_false_positive: {
+      title: { id: 'Salah Menilai Batang Nol', en: 'False Positive Zero-Force Member' },
+      desc: { id: 'Batang yang aktif menyalurkan gaya salah diidentifikasi sebagai batang nol.', en: 'Active force-carrying members were incorrectly flagged as zero-force.' }
+    },
+    wrong_joint_order: {
+      title: { id: 'Urutan Penyelesaian Salah', en: 'Incorrect Joint Sequence' },
+      desc: { id: 'Memilih titik hubung dengan lebih dari 2 gaya batang yang tidak diketahui. Metode Titik Hubung hanya dapat menyelesaikan maksimal 2 unknowns.', en: 'Selected joints with more than 2 unknowns. The Method of Joints requires solving joints with at most 2 unknowns.' }
+    },
+    reaction_count_error: {
+      title: { id: 'Kesalahan Reaksi Tumpuan', en: 'Support Reaction Counting' },
+      desc: { id: 'Salah menghitung derajat kebebasan tumpuan. Sendi = 2, Rol = 1.', en: 'Incorrectly counted support reaction constraints. Pin = 2, Roller = 1.' }
+    },
+    tension_compression_confusion: {
+      title: { id: 'Kebingungan Tarik/Tekan', en: 'Tension/Compression Confusion' },
+      desc: { id: 'Kebingungan dalam menginterpretasikan hasil gaya batang.', en: 'Confusion interpreting compression vs tension member states.' }
+    }
+  };
+
   function topicLabel(key: string): string {
     const t = topicLabels[key];
     return t ? ($locale === 'id' ? t.id : t.en) : key;
@@ -171,7 +198,13 @@
             on:click={() => {
               const route = getRouteForAttempt(attempt.problemId, allProblems);
               if (route.page === 'trusses') {
-                onNavigate('trusses', { problemId: route.problemId });
+                if (attempt.misconceptions !== undefined || attempt.skillBreakdown !== undefined) {
+                  onNavigate(`trusses/${route.problemId}/guided`);
+                } else {
+                  onNavigate('trusses', { problemId: route.problemId });
+                }
+              } else if (route.page === 'trusses-guided') {
+                onNavigate(`trusses/${route.problemId}/guided`);
               } else if (route.page === 'guided') {
                 onNavigate(`guided/${route.problemId}`);
               } else if (route.page === 'practice') {
@@ -182,6 +215,17 @@
             <div class="attempt-info">
               <span class="attempt-title">{getProblemTitle(attempt.problemId)}</span>
               <span class="attempt-date">{formatDate(attempt.createdAt)}</span>
+              {#if attempt.misconceptions && attempt.misconceptions.length > 0}
+                <div class="misconception-tags">
+                  {#each Array.from(new Set(attempt.misconceptions)) as misc}
+                    {#if misconceptionDetails[misc]}
+                      <span class="misc-tag" title={$locale === 'id' ? misconceptionDetails[misc].desc.id : misconceptionDetails[misc].desc.en}>
+                        ⚠️ {$locale === 'id' ? misconceptionDetails[misc].title.id : misconceptionDetails[misc].title.en}
+                      </span>
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
             </div>
             <div class="attempt-score {attempt.completed ? 'completed' : 'partial'}">
               {formatScore(attempt.score)}
@@ -422,6 +466,32 @@
   .attempt-date {
     font-size: 0.75rem;
     color: var(--text-secondary);
+  }
+
+  .misconception-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+  }
+
+  .misc-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #b45309;
+    background-color: #fef3c7;
+    border: 1px solid #fde68a;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  :global(html.dark) .misc-tag {
+    color: #fcd34d;
+    background-color: rgba(217, 119, 6, 0.15);
+    border-color: rgba(217, 119, 6, 0.3);
   }
 
   .attempt-score {

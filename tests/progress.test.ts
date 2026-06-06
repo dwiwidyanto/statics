@@ -170,4 +170,52 @@ describe('Local Progress Repository', () => {
     const attempts = repo.getAttempts();
     expect(attempts).toEqual([]);
   });
+
+  it('supports backward compatibility with and without optional fields (topic, skillBreakdown, misconceptions)', () => {
+    const repo = getProgressRepository();
+    repo.reset();
+
+    const attemptBasic: Attempt = {
+      id: 'att-basic',
+      problemId: 'prob-1',
+      problemVersion: 1,
+      createdAt: new Date().toISOString(),
+      answers: { R_Ay: 300 },
+      score: 1.0,
+      feedback: [],
+      completed: true,
+    };
+
+    const attemptRich: Attempt = {
+      id: 'att-rich',
+      problemId: 'prob-2',
+      problemVersion: 1,
+      createdAt: new Date().toISOString(),
+      answers: { R_By: 400 },
+      score: 0.8,
+      feedback: ['Try again'],
+      completed: false,
+      topic: 'trusses',
+      skillBreakdown: { determinacy: 1, reactions: 0.5 },
+      misconceptions: ['sign-reversed'],
+    };
+
+    repo.saveAttempt(attemptBasic);
+    repo.saveAttempt(attemptRich);
+
+    const loadedBasic = repo.getAttempts('prob-1')[0];
+    const loadedRich = repo.getAttempts('prob-2')[0];
+
+    expect(loadedBasic).toBeDefined();
+    expect(loadedBasic.id).toBe('att-basic');
+    expect(loadedBasic.topic).toBeUndefined();
+    expect(loadedBasic.skillBreakdown).toBeUndefined();
+    expect(loadedBasic.misconceptions).toBeUndefined();
+
+    expect(loadedRich).toBeDefined();
+    expect(loadedRich.id).toBe('att-rich');
+    expect(loadedRich.topic).toBe('trusses');
+    expect(loadedRich.skillBreakdown).toEqual({ determinacy: 1, reactions: 0.5 });
+    expect(loadedRich.misconceptions).toEqual(['sign-reversed']);
+  });
 });

@@ -131,9 +131,14 @@
   {/if}
 
   <header class="page-header">
-    <button class="btn btn-secondary back-btn" on:click={() => onNavigate('dashboard')}>
-      ◀ {$locale === 'id' ? 'Kembali ke Dasbor' : 'Back to Dashboard'}
-    </button>
+    <div class="header-btn-row">
+      <button class="btn btn-secondary back-btn" on:click={() => onNavigate('dashboard')}>
+        ◀ {$locale === 'id' ? 'Kembali ke Dasbor' : 'Back to Dashboard'}
+      </button>
+      <button class="btn btn-guided-mode" on:click={() => onNavigate('trusses/' + selectedProblemId + '/guided')}>
+        🎓 {$locale === 'id' ? 'Mulai Mode Terpandu' : 'Start Guided Mode'}
+      </button>
+    </div>
     <div class="header-text-group">
       <span class="subheading">{$locale === 'id' ? 'Latihan Mandiri Rangka Batang' : 'Truss Self-Practice'}</span>
       <h1>{$locale === 'id' ? 'Analisis Rangka Batang Planar' : 'Planar Truss Analysis'}</h1>
@@ -261,6 +266,30 @@
     align-self: flex-start;
     font-size: 0.85rem;
     padding: 0.5rem 0.75rem;
+  }
+
+  .header-btn-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-guided-mode {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+
+  .btn-guided-mode:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
   }
 
   .header-text-group h1 {

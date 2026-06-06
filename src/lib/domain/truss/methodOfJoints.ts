@@ -192,7 +192,17 @@ export function solveMethodOfJoints(
 
   const isSolved = solvedMembers.size === members.length;
   if (!isSolved) {
-    messages.push('Method of joints could not progress because there are no joints with at most two unknown member forces remaining.');
+    const jCount = joints.length;
+    const mCount = members.length;
+    const rCount = allReactionsList.length;
+    if (mCount + rCount === 2 * jCount) {
+      messages.push(
+        'The truss is statically determinate but cannot be solved by a greedy joint-by-joint marching method. ' +
+        'All remaining unsolved joints have 3 or more unknown forces, which requires solving the system of equations simultaneously.'
+      );
+    } else {
+      messages.push('Method of joints could not progress because there are no joints with at most two unknown member forces remaining.');
+    }
   }
 
   return {
