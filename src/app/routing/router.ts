@@ -28,6 +28,7 @@ export type Route =
   | { page: 'guided'; problemId: string }
   | { page: 'concept'; topicId: string }
   | { page: 'progress' }
+  | { page: 'attempt-review'; attemptId: string }
   | { page: 'trusses'; problemId?: string }
   | { page: 'trusses-guided'; problemId: string };
 
@@ -64,6 +65,9 @@ export function parseRoute(hash: string): Route {
       return { page: 'dashboard' };
 
     case 'progress':
+      if (segments.length > 2 && segments[1] === 'attempt') {
+        return { page: 'attempt-review', attemptId: segments[2] };
+      }
       return { page: 'progress' };
 
     case 'trusses':
@@ -96,6 +100,8 @@ export function buildHash(route: Route): string {
       return `#/concept/${route.topicId}`;
     case 'progress':
       return '#/progress';
+    case 'attempt-review':
+      return `#/progress/attempt/${route.attemptId}`;
     case 'trusses':
       return route.problemId ? `#/trusses/${route.problemId}` : '#/trusses';
     case 'trusses-guided':
@@ -154,6 +160,9 @@ export function navigateTo(route: Route, replace = false): void {
  */
 export function legacyToRoute(page: string, params?: { problemId?: string }): Route {
   if (page === 'dashboard') return { page: 'dashboard' };
+  if (page.startsWith('progress/attempt/')) {
+    return { page: 'attempt-review', attemptId: page.substring(17) };
+  }
   if (page === 'progress') return { page: 'progress' };
   if (page === 'practice') return { page: 'practice', problemId: params?.problemId };
   if (page === 'trusses') return { page: 'trusses', problemId: params?.problemId };

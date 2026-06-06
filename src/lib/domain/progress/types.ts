@@ -4,6 +4,41 @@
  * The storage backend is abstracted behind ProgressRepository.
  */
 
+export type GuidedStepId =
+  | 'overview'
+  | 'determinacy'
+  | 'reactions'
+  | 'zero_members'
+  | 'joint_sequence'
+  | 'member_forces'
+  | 'summary';
+
+export interface GuidedStepAttempt {
+  stepId: GuidedStepId;
+  createdAt: string; // ISO 8601
+  isCorrect: boolean;
+  score: number; // 0 to 1
+  answersSnapshot: any; // Record of inputs/answers
+  feedbackMessages: string[];
+  misconceptions: string[];
+  hintLevelUsed: number; // 0 to 3
+  attemptNumber: number; // 1-indexed
+}
+
+export interface GuidedAttemptTelemetry {
+  problemId: string;
+  problemVersion: number;
+  topic: string;
+  startedAt: string; // ISO 8601
+  completedAt?: string; // ISO 8601
+  totalScore: number;
+  completed: boolean;
+  stepAttempts: GuidedStepAttempt[];
+  misconceptionCounts: Record<string, number>;
+  skillBreakdown: Record<string, number>;
+  finalAnswers: Record<string, number>;
+}
+
 /** A single attempt at solving a problem. */
 export interface Attempt {
   id: string;
@@ -17,6 +52,7 @@ export interface Attempt {
   topic?: string;
   skillBreakdown?: Record<string, number>;
   misconceptions?: string[];
+  guidedTelemetry?: GuidedAttemptTelemetry;
 }
 
 /** Aggregated progress for a single problem. */

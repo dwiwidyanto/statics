@@ -6,7 +6,13 @@
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
   import type { ProgressSummary, Attempt } from '../../lib/domain/progress/types';
   import type { AnyProblem } from '../../lib/services/progressRepository';
-  import { getRouteForAttempt } from '../../app/routing/router';
+  import { getFirstAttemptAccuracy, getHintUsageSummary } from '../../lib/domain/progress/guidedTelemetry';
+
+  // Import Sub-components
+  import ProgressStatsGrid from '../components/progress/ProgressStatsGrid.svelte';
+  import TopicProgressList from '../components/progress/TopicProgressList.svelte';
+  import RecentAttemptsList from '../components/progress/RecentAttemptsList.svelte';
+  import MisconceptionSummary from '../components/progress/MisconceptionSummary.svelte';
 
   export let onNavigate: (page: string, params?: any) => void;
 
@@ -53,67 +59,18 @@
     }
   }
 
-  function getProblemTitle(problemId: string): string {
-    const p = allProblems.find(pr => pr.id === problemId);
-    if (!p) return problemId;
-    return $locale === 'id' ? (p.titleId || p.title) : p.title;
-  }
+  // Reactive calculations for guided learning telemetry aggregates
+  $: firstAttemptAccuracy = (() => {
+    const attemptsWithTelemetry = repo.getAttempts().filter(a => a.guidedTelemetry !== undefined && a.guidedTelemetry.stepAttempts.length > 0);
+    if (attemptsWithTelemetry.length === 0) return null;
+    const sum = attemptsWithTelemetry.reduce((acc, a) => acc + getFirstAttemptAccuracy(a.guidedTelemetry!.stepAttempts), 0);
+    return sum / attemptsWithTelemetry.length;
+  })();
 
-  // Topic display names
-  const topicLabels: Record<string, { en: string; id: string }> = {
-    'fbd': { en: 'Free-Body Diagrams', id: 'Diagram Benda Bebas' },
-    'equilibrium': { en: 'Equilibrium', id: 'Kesetimbangan' },
-    'determinacy': { en: 'Determinacy & Stability', id: 'Determinasi & Stabilitas' },
-    'beam-internal-forces': { en: 'Beam Internal Forces', id: 'Gaya Dalam Balok' },
-    'trusses': { en: 'Trusses', id: 'Rangka Batang' },
-  };
-
-  const misconceptionDetails: Record<string, { title: { id: string; en: string }; desc: { id: string; en: string } }> = {
-    sign_reversed: {
-      title: { id: 'Tanda Terbalik (+/-)', en: 'Sign Convention Reversal' },
-      desc: { id: 'Ingat bahwa gaya Tarik bernilai Positif (+) dan Tekan bernilai Negatif (-). Periksa kembali persamaan ΣFx dan ΣFy Anda.', en: 'Remember that Tension forces are Positive (+) and Compression are Negative (-). Check your ΣFx and ΣFy sign assignments.' }
-    },
-    zero_force_missed: {
-      title: { id: 'Batang Nol Terlewat', en: 'Missed Zero-Force Member' },
-      desc: { id: 'Beberapa batang berdaya nol tidak teridentifikasi. Tinjau kembali Aturan 1 dan Aturan 2 pada titik hubung bebas.', en: 'Some zero-force members were missed. Review Rule 1 and Rule 2 for unloaded, unsupported joints.' }
-    },
-    zero_force_false_positive: {
-      title: { id: 'Salah Menilai Batang Nol', en: 'False Positive Zero-Force Member' },
-      desc: { id: 'Batang yang aktif menyalurkan gaya salah diidentifikasi sebagai batang nol.', en: 'Active force-carrying members were incorrectly flagged as zero-force.' }
-    },
-    wrong_joint_order: {
-      title: { id: 'Urutan Penyelesaian Salah', en: 'Incorrect Joint Sequence' },
-      desc: { id: 'Memilih titik hubung dengan lebih dari 2 gaya batang yang tidak diketahui. Metode Titik Hubung hanya dapat menyelesaikan maksimal 2 unknowns.', en: 'Selected joints with more than 2 unknowns. The Method of Joints requires solving joints with at most 2 unknowns.' }
-    },
-    reaction_count_error: {
-      title: { id: 'Kesalahan Reaksi Tumpuan', en: 'Support Reaction Counting' },
-      desc: { id: 'Salah menghitung derajat kebebasan tumpuan. Sendi = 2, Rol = 1.', en: 'Incorrectly counted support reaction constraints. Pin = 2, Roller = 1.' }
-    },
-    tension_compression_confusion: {
-      title: { id: 'Kebingungan Tarik/Tekan', en: 'Tension/Compression Confusion' },
-      desc: { id: 'Kebingungan dalam menginterpretasikan hasil gaya batang.', en: 'Confusion interpreting compression vs tension member states.' }
-    }
-  };
-
-  function topicLabel(key: string): string {
-    const t = topicLabels[key];
-    return t ? ($locale === 'id' ? t.id : t.en) : key;
-  }
-
-  function formatScore(score: number): string {
-    return `${Math.round(score * 100)}%`;
-  }
-
-  function formatDate(iso: string): string {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString($locale === 'id' ? 'id-ID' : 'en-US', {
-        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-      });
-    } catch {
-      return iso;
-    }
-  }
+  $: totalHintsUsed = (() => {
+    const attemptsWithTelemetry = repo.getAttempts().filter(a => a.guidedTelemetry !== undefined);
+    return attemptsWithTelemetry.reduce((acc, a) => acc + getHintUsageSummary(a.guidedTelemetry!.stepAttempts).totalHintsUsed, 0);
+  })();
 </script>
 
 <div class="progress-container animate-fade-in">
@@ -129,115 +86,29 @@
     </div>
   </header>
 
-  <!-- Summary Stats -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <span class="stat-value">{summary.totalProblems}</span>
-      <span class="stat-label">{$locale === 'id' ? 'Total Soal' : 'Total Problems'}</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value">{summary.attemptedProblems}</span>
-      <span class="stat-label">{$locale === 'id' ? 'Sudah Dicoba' : 'Attempted'}</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value">{summary.completedProblems}</span>
-      <span class="stat-label">{$locale === 'id' ? 'Selesai' : 'Completed'}</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value">{formatScore(summary.averageBestScore)}</span>
-      <span class="stat-label">{$locale === 'id' ? 'Rata-Rata Skor' : 'Avg. Best Score'}</span>
-    </div>
-  </div>
+  <!-- Summary Stats Grid -->
+  <ProgressStatsGrid
+    totalProblems={summary.totalProblems}
+    attemptedProblems={summary.attemptedProblems}
+    completedProblems={summary.completedProblems}
+    averageBestScore={summary.averageBestScore}
+    {firstAttemptAccuracy}
+    {totalHintsUsed}
+  />
 
   <!-- Topic Breakdown -->
-  <div class="section-card">
-    <h2>{$locale === 'id' ? 'Progres per Topik' : 'Progress by Topic'}</h2>
-    <div class="topic-table">
-      <div class="topic-row topic-header-row">
-        <span>{$locale === 'id' ? 'Topik' : 'Topic'}</span>
-        <span>{$locale === 'id' ? 'Total' : 'Total'}</span>
-        <span>{$locale === 'id' ? 'Dicoba' : 'Attempted'}</span>
-        <span>{$locale === 'id' ? 'Selesai' : 'Completed'}</span>
-        <span>{$locale === 'id' ? 'Skor' : 'Score'}</span>
-      </div>
-      {#each Object.entries(summary.byTopic) as [topic, data]}
-        <div class="topic-row">
-          <span class="topic-name">{topicLabel(topic)}</span>
-          <span>{data.total}</span>
-          <span>{data.attempted}</span>
-          <span>{data.completed}</span>
-          <span class="score-badge">{formatScore(data.averageBestScore)}</span>
-        </div>
-      {/each}
-      {#if Object.keys(summary.byTopic).length === 0}
-        <div class="topic-row empty-row">
-          <span>{$locale === 'id' ? 'Belum ada data' : 'No data yet'}</span>
-        </div>
-      {/if}
-    </div>
-  </div>
+  <TopicProgressList byTopic={summary.byTopic} />
 
-  <!-- Recent Attempts -->
-  <div class="section-card">
-    <h2>{$locale === 'id' ? 'Percobaan Terakhir' : 'Recent Attempts'}</h2>
-    {#if recentAttempts.length === 0}
-      <div class="empty-state">
-        <span class="empty-icon">📋</span>
-        <p>{$locale === 'id' 
-          ? 'Belum ada percobaan. Mulai dengan menyelesaikan soal terpandu!' 
-          : 'No attempts yet. Start by completing a guided problem!'}</p>
-        <button class="btn btn-primary" on:click={handleContinue}>
-          {$locale === 'id' ? 'Mulai Belajar' : 'Start Learning'}
-        </button>
-      </div>
-    {:else}
-      <div class="attempts-list">
-        {#each recentAttempts as attempt}
-          <button 
-            class="attempt-card"
-            on:click={() => {
-              const route = getRouteForAttempt(attempt.problemId, allProblems);
-              if (route.page === 'trusses') {
-                if (attempt.misconceptions !== undefined || attempt.skillBreakdown !== undefined) {
-                  onNavigate(`trusses/${route.problemId}/guided`);
-                } else {
-                  onNavigate('trusses', { problemId: route.problemId });
-                }
-              } else if (route.page === 'trusses-guided') {
-                onNavigate(`trusses/${route.problemId}/guided`);
-              } else if (route.page === 'guided') {
-                onNavigate(`guided/${route.problemId}`);
-              } else if (route.page === 'practice') {
-                onNavigate('practice', { problemId: route.problemId });
-              }
-            }}
-          >
-            <div class="attempt-info">
-              <span class="attempt-title">{getProblemTitle(attempt.problemId)}</span>
-              <span class="attempt-date">{formatDate(attempt.createdAt)}</span>
-              {#if attempt.misconceptions && attempt.misconceptions.length > 0}
-                <div class="misconception-tags">
-                  {#each Array.from(new Set(attempt.misconceptions)) as misc}
-                    {#if misconceptionDetails[misc]}
-                      <span class="misc-tag" title={$locale === 'id' ? misconceptionDetails[misc].desc.id : misconceptionDetails[misc].desc.en}>
-                        ⚠️ {$locale === 'id' ? misconceptionDetails[misc].title.id : misconceptionDetails[misc].title.en}
-                      </span>
-                    {/if}
-                  {/each}
-                </div>
-              {/if}
-            </div>
-            <div class="attempt-score {attempt.completed ? 'completed' : 'partial'}">
-              {formatScore(attempt.score)}
-              {#if attempt.completed}
-                <span class="checkmark">✅</span>
-              {/if}
-            </div>
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </div>
+  <!-- Misconceptions and Skill Proficiency Summary -->
+  <MisconceptionSummary attempts={recentAttempts} />
+
+  <!-- Recent Attempts List -->
+  <RecentAttemptsList
+    {recentAttempts}
+    {allProblems}
+    {onNavigate}
+    {handleContinue}
+  />
 
   <!-- Actions -->
   <div class="actions-row">
@@ -308,212 +179,11 @@
     line-height: 1.5;
   }
 
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-  }
-
-  @media (max-width: 600px) {
-    .stats-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  .stat-card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  }
-
-  .stat-value {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    line-height: 1;
-  }
-
-  .stat-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .section-card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.75rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  }
-
-  .section-card h2 {
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-    color: var(--text-primary);
-  }
-
-  .topic-table {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .topic-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
-    gap: 0.5rem;
-    padding: 0.6rem 0.75rem;
-    font-size: 0.9rem;
-    border-radius: 6px;
-    align-items: center;
-  }
-
-  .topic-header-row {
-    font-weight: 700;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.5rem;
-  }
-
-  .topic-row:not(.topic-header-row):hover {
-    background-color: var(--bg-primary);
-  }
-
-  .topic-name {
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .score-badge {
-    font-weight: 700;
-    color: var(--color-primary);
-  }
-
-  .empty-row {
-    color: var(--text-secondary);
-    font-style: italic;
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    padding: 2rem;
-    text-align: center;
-    color: var(--text-secondary);
-  }
-
-  .empty-icon {
-    font-size: 2.5rem;
-  }
-
-  .attempts-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .attempt-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: all 0.15s;
-    width: 100%;
-    font-family: inherit;
-    text-align: left;
-  }
-
-  .attempt-card:hover {
-    border-color: var(--color-primary);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  }
-
-  .attempt-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-
-  .attempt-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .attempt-date {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
-
-  .misconception-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-top: 0.25rem;
-  }
-
-  .misc-tag {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #b45309;
-    background-color: #fef3c7;
-    border: 1px solid #fde68a;
-    padding: 0.1rem 0.45rem;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-  }
-
-  :global(html.dark) .misc-tag {
-    color: #fcd34d;
-    background-color: rgba(217, 119, 6, 0.15);
-    border-color: rgba(217, 119, 6, 0.3);
-  }
-
-  .attempt-score {
-    font-weight: 800;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .attempt-score.completed {
-    color: var(--color-success);
-  }
-
-  .attempt-score.partial {
-    color: var(--color-warning);
-  }
-
   .actions-row {
     display: flex;
     gap: 1rem;
     flex-wrap: wrap;
+    align-items: center;
   }
 
   .btn-danger {

@@ -4,6 +4,7 @@
   import { buildJointEquationPrompt } from '../../../lib/domain/truss/guidedWorkflow';
   import { checkIndividualAnswer } from '../../../lib/domain/truss/scoring';
   import type { AnswerFeedback } from '../../../lib/domain/truss/scoring';
+  import { guidedHints, getHintText } from '../../../lib/domain/truss/guidedHints';
 
   export let truss: TrussModel;
   export let jointId: string;
@@ -12,11 +13,39 @@
   export let knownReactions: Record<string, number>;
   export let knownMemberForces: Record<string, number>;
   export let onSubmitAnswers: (solved: Record<string, number>, score: number, misconceptions: string[]) => void;
+  export let onStepAttempt: (data: {
+    isCorrect: boolean;
+    score: number;
+    answersSnapshot: any;
+    feedbackMessages: string[];
+    misconceptions: string[];
+    hintLevelUsed: number;
+  }) => void = () => {};
 
   let showFeedback = false;
   let isCorrect = false;
   let feedbacks: Record<string, AnswerFeedback> = {};
   let score = 0;
+  let hintLevel = 0;
+
+  // Decide hint based on whether they reversed signs, otherwise default to tension_compression_confusion
+  $: hasSignError = Object.values(feedbacks).some(f => f.status === 'sign_reversed');
+  $: hintKey = hasSignError ? 'sign_reversed' : 'tension_compression_confusion';
+  $: hintText = hintLevel > 0 ? getHintText(guidedHints[hintKey], hintLevel, $locale) : '';
+
+  function handleNeedHint() {
+    if (hintLevel < 3) {
+      hintLevel++;
+      onStepAttempt({
+        isCorrect: false,
+        score: 0.0,
+        answersSnapshot: { jointId, answers },
+        feedbackMessages: [$locale === 'id' ? `Meminta petunjuk tingkat ${hintLevel}` : `Requested hint level ${hintLevel}`],
+        misconceptions: [],
+        hintLevelUsed: hintLevel
+      });
+    }
+  }
 
   // Answers entered by student
   let answers: Record<string, string> = {};
@@ -62,6 +91,15 @@
 
     score = unknownIds.length > 0 ? correctCount / unknownIds.length : 1.0;
     isCorrect = score >= 0.99;
+
+    onStepAttempt({
+      isCorrect,
+      score,
+      answersSnapshot: { jointId, answers: { ...answers } },
+      feedbackMessages: Object.values(feedbacks).map(f => f.message),
+      misconceptions: Array.from(localMisconceptions),
+      hintLevelUsed: hintLevel
+    });
   }
 
   function handleNext() {
@@ -138,6 +176,32 @@
       <button class="btn btn-success" on:click={handleNext}>
         {$locale === 'id' ? 'Perbarui Rangka Batang' : 'Update Truss State'}
       </button>
+    {/if}
+  </div>
+
+  <!-- Hint Section -->
+  <div class="hint-section">
+    {#if hintLevel === 0}
+      <button type="button" class="btn btn-hint" on:click={handleNeedHint}>
+        💡 {$locale === 'id' ? 'Butuh Petunjuk?' : 'Need a Hint?'}
+      </button>
+    {:else}
+      <div class="hint-box animate-fade-in">
+        <div class="hint-header">
+          <span>💡 {$locale === 'id' ? `Petunjuk Tingkat ${hintLevel}` : `Hint Level ${hintLevel}`}</span>
+          {#if hintLevel < 3}
+            <button type="button" class="btn btn-hint-more" on:click={handleNeedHint}>
+              {$locale === 'id' ? 'Petunjuk Lebih Detil' : 'More Detailed Hint'}
+            </button>
+          {/if}
+        </div>
+        <p class="hint-text">{hintText}</p>
+        <span class="hint-warning">
+          ⚠️ {$locale === 'id' 
+            ? 'Penggunaan petunjuk dapat sedikit mengurangi skor maksimal langkah ini.' 
+            : 'Using hints may slightly reduce the maximum score for this step.'}
+        </span>
+      </div>
     {/if}
   </div>
 </div>
@@ -268,4 +332,86 @@
 
   .btn-primary { background-color: var(--color-primary); color: white; }
   .btn-success { background-color: #10b981; color: white; }
+
+  .hint-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border-color);
+  }
+
+  .btn-hint {
+    background-color: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    align-self: flex-start;
+  }
+
+  .btn-hint:hover {
+    background-color: rgba(37, 99, 235, 0.05);
+  }
+
+  .hint-box {
+    background-color: var(--bg-primary);
+    border: 1px solid #fde68a;
+    border-left: 4px solid #f59e0b;
+    border-radius: 6px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: left;
+  }
+
+  :global(html.dark) .hint-box {
+    border-color: rgba(245, 158, 11, 0.2);
+    background-color: rgba(245, 158, 11, 0.05);
+  }
+
+  .hint-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #d97706;
+  }
+
+  .btn-hint-more {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+
+  .hint-text {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  .hint-warning {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>

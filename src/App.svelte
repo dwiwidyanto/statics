@@ -7,6 +7,7 @@
   import ProgressPage from './app/pages/ProgressPage.svelte';
   import TrussPracticePage from './app/pages/TrussPracticePage.svelte';
   import TrussGuidedWorkspace from './app/pages/TrussGuidedWorkspace.svelte';
+  import AttemptReviewPage from './app/pages/AttemptReviewPage.svelte';
   import { currentRoute, navigateTo, legacyToRoute } from './app/routing/router';
   import type { Route } from './app/routing/router';
 
@@ -31,6 +32,7 @@
       case 'guided': return `guided/${route.problemId}`;
       case 'concept': return `concept/${route.topicId}`;
       case 'progress': return 'progress';
+      case 'attempt-review': return `progress/attempt/${route.attemptId}`;
       case 'trusses': return route.problemId ? `trusses/${route.problemId}` : 'trusses';
       case 'trusses-guided': return `trusses/${route.problemId}/guided`;
       default: return 'dashboard';
@@ -61,6 +63,11 @@
     />
   {:else if route.page === 'progress'}
     <ProgressPage onNavigate={navigate} />
+  {:else if route.page === 'attempt-review'}
+    <AttemptReviewPage 
+      attemptId={route.attemptId} 
+      onNavigate={navigate}
+    />
   {:else if route.page === 'trusses'}
     <TrussPracticePage 
       problemId={route.problemId || null} 

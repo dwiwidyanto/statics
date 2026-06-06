@@ -3,7 +3,13 @@
   import { trussProblems } from '../../content/problems/truss-problems';
   import { solveTruss } from '../../lib/domain/truss/solver';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
-  import type { Attempt } from '../../lib/domain/progress/types';
+  import type { Attempt, GuidedAttemptTelemetry, GuidedStepAttempt, GuidedStepId } from '../../lib/domain/progress/types';
+  import {
+    createGuidedAttemptSession,
+    recordStepAttempt,
+    calculateGuidedScore,
+    buildFinalAttemptFromTelemetry
+  } from '../../lib/domain/progress/guidedTelemetry';
   import type { GuidedTrussStep, GuidedTrussState, DeterminacyAnswers } from '../../lib/domain/truss/guidedTypes';
 
   // Import sub-step components
@@ -59,6 +65,7 @@
 
   let misconceptions: string[] = [];
   let isSaved = false;
+  let telemetrySession = createGuidedAttemptSession(activeProblem);
 
   // Track sub-scores for averaging
   let jointSelectionErrorsCount = 0;
@@ -84,6 +91,40 @@
     jointSelectionErrorsCount = 0;
     memberForcesAttempts = 0;
     memberForcesErrorsCount = 0;
+    telemetrySession = createGuidedAttemptSession(activeProblem);
+  }
+
+  function handleStepAttempt(
+    stepId: GuidedStepId,
+    attemptData: {
+      isCorrect: boolean;
+      score: number;
+      answersSnapshot: any;
+      feedbackMessages: string[];
+      misconceptions: string[];
+      hintLevelUsed: number;
+    }
+  ) {
+    telemetrySession = recordStepAttempt(telemetrySession, {
+      stepId,
+      isCorrect: attemptData.isCorrect,
+      score: attemptData.score,
+      answersSnapshot: attemptData.answersSnapshot,
+      feedbackMessages: attemptData.feedbackMessages,
+      misconceptions: attemptData.misconceptions,
+      hintLevelUsed: attemptData.hintLevelUsed,
+      createdAt: new Date().toISOString()
+    });
+
+    const scoredResult = calculateGuidedScore(telemetrySession.stepAttempts);
+    scoreBreakdown = {
+      determinacy: scoredResult.skillBreakdown.determinacy,
+      reactions: scoredResult.skillBreakdown.reactions,
+      zeroForceMembers: scoredResult.skillBreakdown.zeroForceMembers,
+      jointSelection: scoredResult.skillBreakdown.jointSelection,
+      memberForces: scoredResult.skillBreakdown.memberForces
+    };
+    misconceptions = Array.from(new Set(telemetrySession.stepAttempts.flatMap(a => a.misconceptions)));
   }
 
   // Handle step completion
@@ -172,38 +213,22 @@
   function saveAttempt() {
     if (isSaved) return;
 
-    const attemptId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2, 9);
-
     const flatAnswers: Record<string, number> = {};
-    
-    // Add reactions
     for (const [k, v] of Object.entries(reactionAnswers)) {
       if (v !== null) flatAnswers[k] = v;
     }
-    // Add solved member forces
     for (const [k, v] of Object.entries(solvedMemberForces)) {
       flatAnswers[k] = v;
     }
 
-    const uniqueMisconceptions = Array.from(new Set(misconceptions));
+    // Update telemetry session with final scores and outputs
+    telemetrySession.completedAt = new Date().toISOString();
+    telemetrySession.totalScore = overallScore;
+    telemetrySession.completed = overallScore >= 0.8;
+    telemetrySession.finalAnswers = flatAnswers;
+    telemetrySession.skillBreakdown = { ...scoreBreakdown };
 
-    const attempt: Attempt = {
-      id: attemptId,
-      problemId: activeProblem.id,
-      problemVersion: activeProblem.version,
-      createdAt: new Date().toISOString(),
-      answers: flatAnswers,
-      score: overallScore,
-      feedback: uniqueMisconceptions.length > 0
-        ? uniqueMisconceptions.map(m => `Misconception flagged: ${m}`)
-        : [$locale === 'id' ? 'Latihan terpandu selesai dengan sempurna!' : 'Guided learning completed perfectly!'],
-      completed: overallScore >= 0.8,
-      topic: 'trusses',
-      skillBreakdown: { ...scoreBreakdown },
-      misconceptions: uniqueMisconceptions
-    };
+    const attempt = buildFinalAttemptFromTelemetry(telemetrySession);
 
     repo.saveAttempt(attempt);
     isSaved = true;
@@ -291,12 +316,14 @@
             truss={activeProblem}
             answers={determinacyAnswers}
             onNext={handleCompleteDeterminacy}
+            onStepAttempt={(data) => handleStepAttempt('determinacy', data)}
           />
         {:else if currentStep === 'reactions'}
           <ReactionStep
             reactionsReference={solverResult.reactions}
             answers={reactionAnswers}
             onNext={handleCompleteReactions}
+            onStepAttempt={(data) => handleStepAttempt('reactions', data)}
           />
         {:else if currentStep === 'zero_members'}
           <ZeroForceStep
@@ -304,6 +331,7 @@
             referenceZeroForceIds={solverResult.zeroForceMembers}
             bind:zeroForceSelections={zeroForceSelections}
             onNext={handleCompleteZeroForce}
+            onStepAttempt={(data) => handleStepAttempt('zero_members', data)}
           />
         {:else if currentStep === 'joint_sequence'}
           {#if !currentSolvingJointId}
@@ -311,6 +339,7 @@
               truss={activeProblem}
               solvedMemberIds={solvedMemberIds}
               onSelectJoint={handleSelectJoint}
+              onStepAttempt={(data) => handleStepAttempt('joint_sequence', data)}
             />
           {:else}
             <MemberForceStep
@@ -321,6 +350,7 @@
               knownReactions={solvedReactions}
               knownMemberForces={solvedMemberForces}
               onSubmitAnswers={handleSolveJointForces}
+              onStepAttempt={(data) => handleStepAttempt('member_forces', data)}
             />
           {/if}
         {:else if currentStep === 'summary'}
