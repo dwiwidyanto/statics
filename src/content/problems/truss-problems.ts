@@ -179,6 +179,18 @@ export const trussProblems: TrussModel[] = [
   }
 ];
 
+trussProblems.forEach((problem, index) => {
+  problem.moduleOrder = index + 1;
+  problem.prerequisiteProblemIds = index === 0 ? [] : [trussProblems[index - 1].id];
+  problem.recommendedNextIds = trussProblems[index + 1] ? [trussProblems[index + 1].id] : [];
+  problem.skillTags = [
+    'truss-reactions',
+    'method-of-joints',
+    problem.referenceSolution?.zeroForceMembers?.length ? 'zeroForceMembers' : 'memberForces',
+    problem.difficulty
+  ];
+});
+
 // Eagerly calculate reference solutions for all determinate problems
 for (const problem of trussProblems) {
   const result = solveTruss(problem);
@@ -191,4 +203,13 @@ for (const problem of trussProblems) {
       stability: result.stability
     };
   }
+}
+
+for (const problem of trussProblems) {
+  problem.skillTags = [
+    'truss-reactions',
+    'method-of-joints',
+    problem.referenceSolution?.zeroForceMembers?.length ? 'zeroForceMembers' : 'memberForces',
+    problem.difficulty
+  ];
 }

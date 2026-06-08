@@ -51,6 +51,7 @@ describe('Hash-based Routing System', () => {
     expect(parseRoute('#/unknown-page')).toEqual({ page: 'dashboard' });
     expect(parseRoute('#/guided/')).toEqual({ page: 'dashboard' }); // missing parameter
     expect(parseRoute('#/concept/')).toEqual({ page: 'dashboard' }); // missing parameter
+    expect(parseRoute('#/progress/attempt')).toEqual({ page: 'dashboard' });
   });
 
   it('builds hash strings from route objects', () => {
@@ -64,6 +65,21 @@ describe('Hash-based Routing System', () => {
     expect(buildHash({ page: 'trusses' })).toBe('#/trusses');
     expect(buildHash({ page: 'trusses', problemId: 'truss-simple-triangle' })).toBe('#/trusses/truss-simple-triangle');
     expect(buildHash({ page: 'trusses-guided', problemId: 'truss-simple-triangle' })).toBe('#/trusses/truss-simple-triangle/guided');
+  });
+
+  it('round-trips supported direct hash routes', () => {
+    const hashes = [
+      '#/',
+      '#/guided/beam-simply-supported-midpoint',
+      '#/trusses/truss-simple-triangle',
+      '#/trusses/truss-simple-triangle/guided',
+      '#/progress',
+      '#/progress/attempt/attempt-1'
+    ];
+
+    for (const hash of hashes) {
+      expect(buildHash(parseRoute(hash))).toBe(hash);
+    }
   });
 
   it('bridges legacy pages to route objects correctly', () => {
@@ -145,5 +161,3 @@ describe('Hash-based Routing System', () => {
     });
   });
 });
-
-

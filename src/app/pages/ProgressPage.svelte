@@ -8,10 +8,12 @@
   import type { AnyProblem } from '../../lib/services/progressRepository';
   import { computeLearningAnalytics } from '../../lib/domain/progress/analytics';
   import { serializeProgressData, validateAndParseImportData } from '../../lib/services/progressExport';
+  import { serializeAttemptsCsv } from '../../lib/services/progressCsvExport';
   import { buildLearningRecommendations } from '../../lib/domain/progress/recommendations';
   import { misconceptionsDictionary } from '../../content/learning/misconceptions';
 
   // Import Sub-components
+  import ProgressHeader from '../components/progress/ProgressHeader.svelte';
   import ProgressStatsGrid from '../components/progress/ProgressStatsGrid.svelte';
   import TopicProgressList from '../components/progress/TopicProgressList.svelte';
   import RecentAttemptsList from '../components/progress/RecentAttemptsList.svelte';
@@ -32,6 +34,7 @@
   let importingPayload: unknown = null;
   let importError: string | null = null;
   let importWarnings: string[] = [];
+  let importResultMessage: string | null = null;
 
   function refreshData() {
     summary = repo.getSummary(allProblems);
@@ -107,11 +110,21 @@
     linkElement.click();
   }
 
+  function handleInstructorCsvExport() {
+    const dataStr = serializeAttemptsCsv(repo.getAttempts());
+    const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(dataStr);
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', 'staticslab_instructor_attempts.csv');
+    linkElement.click();
+  }
+
   function triggerImportPicker() {
     importError = null;
     importingAttempts = null;
     importingPayload = null;
     importWarnings = [];
+    importResultMessage = null;
     importFileInput.click();
   }
 
@@ -129,6 +142,7 @@
         importingAttempts = validation.attempts;
         importingPayload = JSON.parse(text);
         importWarnings = validation.warnings ?? [];
+        importResultMessage = null;
         importError = null;
       } else {
         importError = validation.error || 'Failed to import progress data';
@@ -149,6 +163,9 @@
     if (!importingPayload) return;
     const result = repo.importProgress(importingPayload, 'merge');
     importWarnings = result.warnings;
+    importResultMessage = $locale === 'id'
+      ? `Impor selesai: ${result.importedAttempts} ditambahkan, ${result.duplicateAttempts} duplikat, ${result.skippedAttempts} dilewati.`
+      : `Import complete: ${result.importedAttempts} added, ${result.duplicateAttempts} duplicates, ${result.skippedAttempts} skipped.`;
     importingAttempts = null;
     importingPayload = null;
     refreshData();
@@ -158,6 +175,9 @@
     if (!importingPayload) return;
     const result = repo.importProgress(importingPayload, 'replace');
     importWarnings = result.warnings;
+    importResultMessage = $locale === 'id'
+      ? `Impor ganti selesai: ${result.importedAttempts} percobaan dimuat, ${result.skippedAttempts} dilewati.`
+      : `Replace import complete: ${result.importedAttempts} attempts loaded, ${result.skippedAttempts} skipped.`;
     importingAttempts = null;
     importingPayload = null;
     refreshData();
@@ -165,17 +185,7 @@
 </script>
 
 <div class="progress-container animate-fade-in">
-  <header class="progress-header">
-    <div class="header-text">
-      <span class="subheading">{$locale === 'id' ? 'Pelacakan Kemajuan' : 'Progress Tracking'}</span>
-      <h1>{$locale === 'id' ? 'Progres Belajar Anda' : 'Your Learning Progress'}</h1>
-      <p class="description">
-        {$locale === 'id'
-          ? 'Pantau kemajuan Anda dalam menyelesaikan soal-soal statika. Data disimpan secara lokal di browser Anda.'
-          : 'Track your progress through the statics problem sets. Data is stored locally in your browser.'}
-      </p>
-    </div>
-  </header>
+  <ProgressHeader />
 
   <!-- Summary Stats Grid -->
   <ProgressStatsGrid
@@ -216,6 +226,19 @@
     <div class="import-error-banner" role="alert">
       <span>⚠️ {importError}</span>
       <button class="btn-close" on:click={() => importError = null}>×</button>
+    </div>
+  {/if}
+
+  {#if importResultMessage}
+    <div class="import-result-banner" role="status">
+      <span>{importResultMessage}</span>
+      {#if importWarnings.length > 0}
+        <ul>
+          {#each importWarnings as warning}
+            <li>{warning}</li>
+          {/each}
+        </ul>
+      {/if}
     </div>
   {/if}
 
@@ -375,6 +398,9 @@
     <button class="btn btn-secondary" on:click={handleExport}>
       📥 {$locale === 'id' ? 'Ekspor Progres (JSON)' : 'Export Progress (JSON)'}
     </button>
+    <button class="btn btn-secondary" on:click={handleInstructorCsvExport}>
+      {$locale === 'id' ? 'Ekspor Instruktur (CSV)' : 'Instructor Export (CSV)'}
+    </button>
     <button class="btn btn-secondary" on:click={triggerImportPicker}>
       📤 {$locale === 'id' ? 'Impor Progres' : 'Import Progress'}
     </button>
@@ -411,40 +437,6 @@
     display: flex;
     flex-direction: column;
     gap: 2rem;
-  }
-
-  .progress-header {
-    background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
-    color: white;
-    padding: 2rem 2.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  :global(html.dark) .progress-header {
-    background: linear-gradient(135deg, #115e59 0%, #042f2e 100%);
-    border: 1px solid var(--border-color);
-  }
-
-  .subheading {
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: #99f6e4;
-  }
-
-  .progress-header h1 {
-    color: white;
-    font-size: 2rem;
-    margin-top: 0.25rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .description {
-    color: #ccfbf1;
-    font-size: 0.95rem;
-    line-height: 1.5;
   }
 
   .card {
@@ -665,6 +657,23 @@
     border-radius: 8px;
     font-size: 0.85rem;
     font-weight: 600;
+  }
+
+  .import-result-banner {
+    background-color: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: var(--text-primary);
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .import-result-banner ul {
+    margin: 0.5rem 0 0 1rem;
+    padding: 0;
+    color: var(--text-secondary);
+    font-weight: 400;
   }
 
   .btn-close {

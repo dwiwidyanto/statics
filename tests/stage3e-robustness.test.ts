@@ -113,4 +113,28 @@ describe('Stage 3E robustness helpers', () => {
     }));
     expect(buildLearningRecommendations({ attempts: strongAttempts, allProblems: problems }).some(r => r.type === 'advance_topic')).toBe(true);
   });
+
+  it('prefers unmet prerequisites before advanced recommendation targets', () => {
+    const problems: AnyProblem[] = [
+      { ...trussProblems[0], id: 'easy-truss', difficulty: 'easy', moduleOrder: 1, prerequisiteProblemIds: [], skillTags: ['method-of-joints'] },
+      { ...trussProblems[1], id: 'medium-truss', difficulty: 'medium', moduleOrder: 2, prerequisiteProblemIds: ['easy-truss'], skillTags: ['zeroForceMembers'] },
+      { ...trussProblems[4], id: 'hard-truss', difficulty: 'hard', moduleOrder: 3, prerequisiteProblemIds: ['medium-truss'], skillTags: ['zeroForceMembers'] }
+    ];
+
+    const attempts: Attempt[] = [{
+      id: 'a1',
+      problemId: 'easy-truss',
+      problemVersion: 1,
+      createdAt: '2026-06-01T00:00:00Z',
+      answers: {},
+      score: 0.95,
+      feedback: [],
+      completed: true,
+      misconceptions: ['zero_force_missed', 'zero_force_missed']
+    }];
+
+    const recommendations = buildLearningRecommendations({ attempts, allProblems: problems });
+    const continueRecommendation = recommendations.find(r => r.type === 'continue_topic');
+    expect(continueRecommendation?.relatedProblemId).toBe('medium-truss');
+  });
 });

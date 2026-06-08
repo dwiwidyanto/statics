@@ -630,3 +630,15 @@ export const beamProblems: ProblemModel[] = [
     learningObjectives: ['Analyze upward loads on cantilevers', 'Interpret negative reactions and moments']
   }
 ];
+
+beamProblems.forEach((problem, index) => {
+  problem.moduleOrder = index + 1;
+  problem.prerequisiteProblemIds = index === 0 ? [] : [beamProblems[index - 1].id];
+  problem.recommendedNextIds = beamProblems[index + 1] ? [beamProblems[index + 1].id] : [];
+  problem.skillTags = [
+    'reactions',
+    problem.loads.some(load => load.type === 'distributed_load') ? 'distributed-loads' : 'point-loads',
+    problem.supports.some(support => support.type === 'fixed') ? 'fixed-supports' : 'simple-supports',
+    'beam-diagrams'
+  ];
+});

@@ -36,6 +36,7 @@ export interface ProgressRepository {
   importProgress(data: unknown, mode: 'replace' | 'merge'): {
     importedAttempts: number;
     skippedAttempts: number;
+    duplicateAttempts: number;
     warnings: string[];
   };
 

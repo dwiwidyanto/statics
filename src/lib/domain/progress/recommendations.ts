@@ -22,6 +22,34 @@ function problemRoute(problem: AnyProblem): string {
   return problem.topic === 'trusses' ? `trusses:${problem.id}` : `guided/${problem.id}`;
 }
 
+const difficultyRank = { easy: 0, medium: 1, hard: 2 } as const;
+
+function orderProblems(problems: AnyProblem[]): AnyProblem[] {
+  return [...problems].sort((a, b) => {
+    const moduleDelta = (a.moduleOrder ?? 999) - (b.moduleOrder ?? 999);
+    if (moduleDelta !== 0) return moduleDelta;
+    const difficultyDelta = difficultyRank[a.difficulty] - difficultyRank[b.difficulty];
+    if (difficultyDelta !== 0) return difficultyDelta;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+function findNextProblem(allProblems: AnyProblem[], completedProblemIds: Set<string>, preferredSkillTags: string[]): AnyProblem | undefined {
+  const ordered = orderProblems(allProblems);
+  const eligible = ordered.filter(problem => {
+    if (completedProblemIds.has(problem.id)) return false;
+    return (problem.prerequisiteProblemIds ?? []).every(id => completedProblemIds.has(id));
+  });
+  const skillMatch = preferredSkillTags.length > 0
+    ? eligible.find(problem => (problem.skillTags ?? []).some(tag => preferredSkillTags.includes(tag)))
+    : undefined;
+  if (skillMatch) return skillMatch;
+
+  const blocked = ordered.find(problem => !completedProblemIds.has(problem.id));
+  const missingPrereqId = blocked?.prerequisiteProblemIds?.find(id => !completedProblemIds.has(id));
+  return missingPrereqId ? ordered.find(problem => problem.id === missingPrereqId) : eligible[0];
+}
+
 export function buildLearningRecommendations(args: {
   attempts: Attempt[];
   allProblems: AnyProblem[];
@@ -56,6 +84,7 @@ export function buildLearningRecommendations(args: {
     .filter(([, count]) => count >= 2)
     .sort((a, b) => b[1] - a[1])[0]?.[0];
   const misconception = repeatedMisconception ? getMisconceptionDefinition(repeatedMisconception) : null;
+  const preferredSkillTags = misconception?.relatedSkills ?? [];
   if (misconception) {
     recommendations.push({
       priority: 'high',
@@ -83,7 +112,7 @@ export function buildLearningRecommendations(args: {
   }
 
   const completedProblemIds = new Set(attempts.filter(a => a.completed || a.score >= 0.8).map(a => a.problemId));
-  const nextProblem = args.allProblems.find(problem => !completedProblemIds.has(problem.id));
+  const nextProblem = findNextProblem(args.allProblems, completedProblemIds, preferredSkillTags);
   if (nextProblem) {
     recommendations.push({
       priority: 'medium',

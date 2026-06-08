@@ -218,4 +218,73 @@ describe('Local Progress Repository', () => {
     expect(loadedRich.skillBreakdown).toEqual({ determinacy: 1, reactions: 0.5 });
     expect(loadedRich.misconceptions).toEqual(['sign-reversed']);
   });
+
+  it('imports progress with duplicate counts in merge mode', () => {
+    const repo = getProgressRepository();
+    repo.reset();
+
+    repo.saveAttempt({
+      id: 'att-existing',
+      problemId: 'prob-1',
+      problemVersion: 1,
+      createdAt: '2026-06-01T00:00:00Z',
+      answers: {},
+      score: 0.7,
+      feedback: [],
+      completed: false,
+    });
+
+    const result = repo.importProgress({
+      schemaVersion: 1,
+      attempts: [
+        {
+          id: 'att-existing',
+          problemId: 'prob-1',
+          problemVersion: 1,
+          createdAt: '2026-06-02T00:00:00Z',
+          answers: {},
+          score: 1,
+          feedback: [],
+          completed: true,
+        },
+        {
+          id: 'att-new',
+          problemId: 'prob-2',
+          problemVersion: 1,
+          createdAt: '2026-06-03T00:00:00Z',
+          answers: {},
+          score: 0.9,
+          feedback: [],
+          completed: true,
+        },
+      ],
+    }, 'merge');
+
+    expect(result.importedAttempts).toBe(1);
+    expect(result.duplicateAttempts).toBe(1);
+    expect(result.skippedAttempts).toBe(1);
+    expect(repo.getAttempts()).toHaveLength(2);
+    expect(repo.getAttempts().map(a => a.id)).toEqual(['att-existing', 'att-new']);
+  });
+
+  it('does not erase existing progress on invalid replace import', () => {
+    const repo = getProgressRepository();
+    repo.reset();
+    repo.saveAttempt({
+      id: 'att-keep',
+      problemId: 'prob-1',
+      problemVersion: 1,
+      createdAt: '2026-06-01T00:00:00Z',
+      answers: {},
+      score: 1,
+      feedback: [],
+      completed: true,
+    });
+
+    const result = repo.importProgress({ schemaVersion: 1, attempts: [{ id: 'broken' }] }, 'replace');
+    expect(result.importedAttempts).toBe(0);
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(repo.getAttempts()).toHaveLength(1);
+    expect(repo.getAttempts()[0].id).toBe('att-keep');
+  });
 });

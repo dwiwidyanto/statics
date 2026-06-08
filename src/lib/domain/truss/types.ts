@@ -44,6 +44,10 @@ export interface TrussModel {
   version: number;
   estimatedTimeMinutes?: number;
   learningObjectives: string[];
+  prerequisiteProblemIds?: string[];
+  skillTags?: string[];
+  moduleOrder?: number;
+  recommendedNextIds?: string[];
   referenceSolution?: TrussReferenceSolution;
 }
 

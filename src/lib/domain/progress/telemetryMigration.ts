@@ -206,5 +206,6 @@ export function normalizeProgressData(raw: unknown): { data: ProgressData; warni
     else warnings.push(`Skipped invalid attempt at index ${index}.`);
   });
 
+  attempts.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   return { data: { schemaVersion: CURRENT_SCHEMA_VERSION, attempts }, warnings };
 }

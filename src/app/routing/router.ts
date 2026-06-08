@@ -11,8 +11,10 @@
  *   #/guided/:problemId      → guided beam workspace
  *   #/concept/:topicId       → concept page
  *   #/progress               → progress dashboard
+ *   #/progress/attempt/:attemptId → attempt review
  *   #/trusses                → truss workspace
  *   #/trusses/:problemId     → truss workspace with preloaded problem
+ *   #/trusses/:problemId/guided → guided truss workflow
  *   (anything else)          → dashboard (fallback)
  */
 
@@ -67,6 +69,9 @@ export function parseRoute(hash: string): Route {
     case 'progress':
       if (segments.length > 2 && segments[1] === 'attempt') {
         return { page: 'attempt-review', attemptId: segments[2] };
+      }
+      if (segments[1] === 'attempt') {
+        return { page: 'dashboard' };
       }
       return { page: 'progress' };
 
@@ -201,4 +206,3 @@ export function getRouteForAttempt(
   }
   return { page: 'practice', problemId };
 }
-

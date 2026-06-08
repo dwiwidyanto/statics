@@ -214,6 +214,14 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Completion requires actual evidence for required guided steps and member-force coverage.
 - Added tests covering incomplete telemetry, hints, repeated wrong attempts, missing member-force evidence, and saved score consistency.
 
+### Stage 3G: Production Hardening and Classroom Export
+- Route parsing/building now explicitly covers guided truss and attempt review routes with round-trip tests.
+- Progress import reports imported, skipped, and duplicate attempts and keeps imported attempts sorted consistently.
+- Progress page includes a local-only CSV instructor export for classroom review.
+- Beam and truss problems include readiness metadata for prerequisites, skill tags, module order, and recommended next IDs.
+- Learning recommendations use metadata to prefer prerequisites and easier unsolved problems before advanced ones.
+- Progress header was extracted to a focused component as a first maintainability step.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions
@@ -225,6 +233,7 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 ### Local Progress Portability
 - Progress can be exported from `#/progress` as a versioned JSON file.
 - Progress can be imported back into the same browser or another browser using merge or replace mode.
+- Instructor CSV export is available from `#/progress` and includes attempt id, problem id, topic, score, completion, timestamp, misconceptions, weakest skill, and hint usage.
 - All progress data remains browser-local in `localStorage`; no backend or authentication is used yet.
 
 ### Developer Notes
@@ -239,8 +248,10 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - `#/guided/:problemId` — Guided Beam Workspace (SFD/BMD)
 - `#/concept/:topicId` — Curriculum Concept Page
 - `#/progress` — Student Progress Dashboard
+- `#/progress/attempt/:attemptId` — Attempt Review page
 - `#/trusses` — Truss practice selection page
 - `#/trusses/:problemId` — Interactive Truss Workspace
+- `#/trusses/:problemId/guided` — Guided method-of-joints workflow
 
 ### Quality Gate Commands
 Ensure all systems remain operational with:
@@ -248,5 +259,8 @@ Ensure all systems remain operational with:
 npm run test                  # Run all Vitest tests successfully
 npm run check                 # Verify zero TypeScript and Svelte diagnostics
 npm run build                 # Compile production client bundles
+npm run test:all              # Run test, check, and build in sequence
 npm audit --audit-level=moderate --omit=dev
 ```
+
+StaticsLab remains a static Svelte SPA suitable for Coolify/Nginx deployment. Progress, imports, and instructor exports are local-only browser features; no backend or authentication is used yet.

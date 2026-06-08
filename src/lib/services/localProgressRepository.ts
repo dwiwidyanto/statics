@@ -179,6 +179,7 @@ export class LocalProgressRepository implements ProgressRepository {
   importProgress(data: unknown, mode: 'replace' | 'merge'): {
     importedAttempts: number;
     skippedAttempts: number;
+    duplicateAttempts: number;
     warnings: string[];
   } {
     const normalized = normalizeProgressData(data);
@@ -189,6 +190,7 @@ export class LocalProgressRepository implements ProgressRepository {
         return {
           importedAttempts: 0,
           skippedAttempts: skippedInvalid,
+          duplicateAttempts: 0,
           warnings: normalized.warnings,
         };
       }
@@ -197,16 +199,20 @@ export class LocalProgressRepository implements ProgressRepository {
       return {
         importedAttempts: normalized.data.attempts.length,
         skippedAttempts: skippedInvalid,
+        duplicateAttempts: 0,
         warnings: normalized.warnings,
       };
     }
 
     const existingById = new Map(this.data.attempts.map(attempt => [attempt.id, attempt]));
     let added = 0;
+    let duplicates = 0;
     for (const attempt of normalized.data.attempts) {
       if (!existingById.has(attempt.id)) {
         existingById.set(attempt.id, attempt);
         added++;
+      } else {
+        duplicates++;
       }
     }
 
@@ -220,7 +226,8 @@ export class LocalProgressRepository implements ProgressRepository {
 
     return {
       importedAttempts: added,
-      skippedAttempts: normalized.data.attempts.length - added + skippedInvalid,
+      skippedAttempts: duplicates + skippedInvalid,
+      duplicateAttempts: duplicates,
       warnings: normalized.warnings,
     };
   }
