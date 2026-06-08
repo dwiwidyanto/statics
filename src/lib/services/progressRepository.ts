@@ -9,6 +9,7 @@ import type {
   Attempt,
   ProblemProgress,
   ProgressSummary,
+  ProgressData,
 } from '../domain/progress/types';
 import type { ProblemModel } from '../domain/models/types';
 import type { TrussModel } from '../domain/truss/types';
@@ -27,6 +28,16 @@ export interface ProgressRepository {
 
   /** Get global progress summary across all problems. */
   getSummary(allProblems: AnyProblem[]): ProgressSummary;
+
+  /** Export the full local progress payload. */
+  exportProgress(): ProgressData;
+
+  /** Import progress from an unknown JSON-compatible value. */
+  importProgress(data: unknown, mode: 'replace' | 'merge'): {
+    importedAttempts: number;
+    skippedAttempts: number;
+    warnings: string[];
+  };
 
   /** Erase all stored progress data. */
   reset(): void;

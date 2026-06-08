@@ -3,7 +3,7 @@
   import { trussProblems } from '../../content/problems/truss-problems';
   import { solveTruss } from '../../lib/domain/truss/solver';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
-  import type { Attempt, GuidedAttemptTelemetry, GuidedStepAttempt, GuidedStepId } from '../../lib/domain/progress/types';
+  import type { Attempt, GuidedAnswersSnapshot, GuidedAttemptTelemetry, GuidedStepAttempt, GuidedStepId } from '../../lib/domain/progress/types';
   import {
     createGuidedAttemptSession,
     recordStepAttempt,
@@ -99,7 +99,7 @@
     attemptData: {
       isCorrect: boolean;
       score: number;
-      answersSnapshot: any;
+      answersSnapshot: GuidedAnswersSnapshot;
       feedbackMessages: string[];
       misconceptions: string[];
       hintLevelUsed: number;

@@ -189,20 +189,19 @@ describe('Guided Learning Telemetry Domain Logic', () => {
     // Expected zeroForceMembers score: correct on 3rd try = base score 0.7 (0.8 - (3-2)*0.1). Max hint level 2 = -0.2. Final = 0.5.
     expect(skillBreakdown.zeroForceMembers).toBe(0.5);
 
-    // Expected jointSelection score: defaults to 1.0 since no attempts logged
-    expect(skillBreakdown.jointSelection).toBe(1.0);
+    // Missing partial-session steps do not receive inferred full credit.
+    expect(skillBreakdown.jointSelection).toBe(0);
 
-    // Expected memberForces score: defaults to 1.0 since no attempts logged
-    expect(skillBreakdown.memberForces).toBe(1.0);
+    expect(skillBreakdown.memberForces).toBe(0);
 
     // Total score: weighted sum of default weights:
     // determinacy: 0.15 * 1.0 = 0.15
     // reactions: 0.25 * 0.7 = 0.175
     // zero_members: 0.20 * 0.5 = 0.10
-    // joint_sequence: 0.10 * 1.0 = 0.10
-    // member_forces: 0.30 * 1.0 = 0.30
-    // Total = 0.15 + 0.175 + 0.10 + 0.10 + 0.30 = 0.825 -> JS toFixed(2) rounds to 0.82 due to float representation
-    expect(totalScore).toBe(0.82);
+    // joint_sequence: 0.10 * 0 = 0
+    // member_forces: 0.30 * 0 = 0
+    // Total = 0.15 + 0.175 + 0.10 = 0.425 -> rounded to 0.43
+    expect(totalScore).toBe(0.43);
   });
 
   it('calculates first-attempt accuracy correctly', () => {

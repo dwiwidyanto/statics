@@ -1,5 +1,15 @@
 import type { Attempt, GuidedAttemptTelemetry, GuidedStepAttempt, GuidedStepId } from './types';
 
+export const guidedScoreWeights = {
+  overview: 0,
+  determinacy: 0.15,
+  reactions: 0.25,
+  zero_members: 0.20,
+  joint_sequence: 0.10,
+  member_forces: 0.30,
+  summary: 0
+} as const satisfies Record<GuidedStepId, number>;
+
 /**
  * Creates a new guided telemetry session.
  */
@@ -37,7 +47,7 @@ export function recordStepAttempt(
   const newAttempt: GuidedStepAttempt = {
     ...stepAttempt,
     attemptNumber
-  };
+  } as GuidedStepAttempt;
 
   const updatedStepAttempts = [...session.stepAttempts, newAttempt];
   const misconceptionCounts = summarizeMisconceptions(updatedStepAttempts);
@@ -79,17 +89,7 @@ export function calculateGuidedScore(
   totalScore: number;
   skillBreakdown: Record<string, number>;
 } {
-  const defaultWeights: Record<GuidedStepId, number> = {
-    overview: 0,
-    determinacy: 0.15,
-    reactions: 0.25,
-    zero_members: 0.20,
-    joint_sequence: 0.10,
-    member_forces: 0.30,
-    summary: 0
-  };
-
-  const weights = { ...defaultWeights, ...customWeights };
+  const weights = { ...guidedScoreWeights, ...customWeights };
 
   // Calculate score for a single-part step like determinacy, reactions, zero_members
   const calculateSingleStepScore = (stepId: GuidedStepId): number => {
@@ -127,9 +127,6 @@ export function calculateGuidedScore(
     const baseScore = totalCount > 0 ? correctCount / totalCount : 1.0;
     const maxHint = Math.max(0, ...jointSelectionAttempts.map(a => a.hintLevelUsed));
     scoreJointSelection = Math.max(0.3, baseScore - 0.1 * maxHint);
-  } else {
-    // If they completed the truss, they must have solved it, but if no attempts logged, default to 1.0
-    scoreJointSelection = 1.0;
   }
 
   // Member Forces (Multiple member force verification attempts)
@@ -141,8 +138,6 @@ export function calculateGuidedScore(
     const baseScore = totalCount > 0 ? correctCount / totalCount : 1.0;
     const maxHint = Math.max(0, ...memberForcesAttempts.map(a => a.hintLevelUsed));
     scoreMemberForces = Math.max(0.3, baseScore - 0.1 * maxHint);
-  } else {
-    scoreMemberForces = 1.0;
   }
 
   const skillBreakdown = {
@@ -232,7 +227,7 @@ export function getHintUsageSummary(stepAttempts: GuidedStepAttempt[]): {
   // We only increment hint level once for a step when a new level is accessed.
   // To get the max hint level used per step, we find the maximum hint level among all attempts of that step.
   for (const attempt of stepAttempts) {
-    if (attempt.hintLevelUsed > hintsByStep[attempt.attemptNumber === 1 ? attempt.stepId : attempt.stepId]) {
+    if (attempt.hintLevelUsed > hintsByStep[attempt.stepId]) {
       hintsByStep[attempt.stepId] = Math.max(hintsByStep[attempt.stepId], attempt.hintLevelUsed);
     }
     maxHintLevel = Math.max(maxHintLevel, attempt.hintLevelUsed);

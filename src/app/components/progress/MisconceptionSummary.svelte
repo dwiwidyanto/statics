@@ -4,32 +4,17 @@
 
   export let attempts: Attempt[];
 
-  const misconceptionDetails: Record<string, { title: { id: string; en: string }; desc: { id: string; en: string } }> = {
-    sign_reversed: {
-      title: { id: 'Tanda Terbalik (+/-)', en: 'Sign Convention Reversal' },
-      desc: { id: 'Ingat bahwa gaya Tarik bernilai Positif (+) dan Tekan bernilai Negatif (-). Periksa kembali persamaan ΣFx dan ΣFy Anda.', en: 'Remember that Tension forces are Positive (+) and Compression are Negative (-). Check your ΣFx and ΣFy sign assignments.' }
-    },
-    zero_force_missed: {
-      title: { id: 'Batang Nol Terlewat', en: 'Missed Zero-Force Member' },
-      desc: { id: 'Beberapa batang berdaya nol tidak teridentifikasi. Tinjau kembali Aturan 1 dan Aturan 2 pada titik hubung bebas.', en: 'Some zero-force members were missed. Review Rule 1 and Rule 2 for unloaded, unsupported joints.' }
-    },
-    zero_force_false_positive: {
-      title: { id: 'Salah Menilai Batang Nol', en: 'False Positive Zero-Force Member' },
-      desc: { id: 'Batang yang aktif menyalurkan gaya salah diidentifikasi sebagai batang nol.', en: 'Active force-carrying members were incorrectly flagged as zero-force.' }
-    },
-    wrong_joint_order: {
-      title: { id: 'Urutan Penyelesaian Salah', en: 'Incorrect Joint Sequence' },
-      desc: { id: 'Memilih titik hubung dengan lebih dari 2 gaya batang yang tidak diketahui. Metode Titik Hubung hanya dapat menyelesaikan maksimal 2 unknowns.', en: 'Selected joints with more than 2 unknowns. The Method of Joints requires solving joints with at most 2 unknowns.' }
-    },
-    reaction_count_error: {
-      title: { id: 'Kesalahan Reaksi Tumpuan', en: 'Support Reaction Counting' },
-      desc: { id: 'Salah menghitung derajat kebebasan tumpuan. Sendi = 2, Rol = 1.', en: 'Incorrectly counted support reaction constraints. Pin = 2, Roller = 1.' }
-    },
-    tension_compression_confusion: {
-      title: { id: 'Kebingungan Tarik/Tekan', en: 'Tension/Compression Confusion' },
-      desc: { id: 'Kebingungan dalam menginterpretasikan hasil gaya batang.', en: 'Confusion interpreting compression vs tension member states.' }
-    }
-  };
+  import { misconceptionsDictionary } from '../../../content/learning/misconceptions';
+
+  const misconceptionDetails = Object.fromEntries(
+    Object.entries(misconceptionsDictionary).map(([key, val]) => [
+      key,
+      {
+        title: val.title,
+        desc: val.explanation
+      }
+    ])
+  );
 
   const skillLabels: Record<string, { en: string; id: string }> = {
     determinacy: { en: 'Determinacy & Stability', id: 'Determinasi & Stabilitas' },

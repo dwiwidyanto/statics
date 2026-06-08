@@ -5,6 +5,7 @@
   import { checkIndividualAnswer } from '../../../lib/domain/truss/scoring';
   import type { AnswerFeedback } from '../../../lib/domain/truss/scoring';
   import { guidedHints, getHintText } from '../../../lib/domain/truss/guidedHints';
+  import type { MemberForcesSnapshot } from '../../../lib/domain/progress/types';
 
   export let truss: TrussModel;
   export let jointId: string;
@@ -16,7 +17,7 @@
   export let onStepAttempt: (data: {
     isCorrect: boolean;
     score: number;
-    answersSnapshot: any;
+    answersSnapshot: MemberForcesSnapshot;
     feedbackMessages: string[];
     misconceptions: string[];
     hintLevelUsed: number;
@@ -27,6 +28,23 @@
   let feedbacks: Record<string, AnswerFeedback> = {};
   let score = 0;
   let hintLevel = 0;
+  let answers: Record<string, string> = {};
+
+  $: prompt = buildJointEquationPrompt(truss, jointId, solvedMemberIds, knownReactions, knownMemberForces);
+
+  function snapshot(): MemberForcesSnapshot {
+    const normalizedAnswers: Record<string, number | null> = {};
+    for (const [memberId, value] of Object.entries(answers)) {
+      normalizedAnswers[memberId] = value === '' ? null : Number(value);
+    }
+
+    return {
+      kind: 'member_forces',
+      jointId,
+      answers: normalizedAnswers,
+      unknownMemberIds: prompt?.unknownMemberIds ?? []
+    };
+  }
 
   // Decide hint based on whether they reversed signs, otherwise default to tension_compression_confusion
   $: hasSignError = Object.values(feedbacks).some(f => f.status === 'sign_reversed');
@@ -39,7 +57,7 @@
       onStepAttempt({
         isCorrect: false,
         score: 0.0,
-        answersSnapshot: { jointId, answers },
+        answersSnapshot: snapshot(),
         feedbackMessages: [$locale === 'id' ? `Meminta petunjuk tingkat ${hintLevel}` : `Requested hint level ${hintLevel}`],
         misconceptions: [],
         hintLevelUsed: hintLevel
@@ -47,10 +65,6 @@
     }
   }
 
-  // Answers entered by student
-  let answers: Record<string, string> = {};
-
-  $: prompt = buildJointEquationPrompt(truss, jointId, solvedMemberIds, knownReactions, knownMemberForces);
 
   $: {
     if (prompt) {
@@ -95,7 +109,7 @@
     onStepAttempt({
       isCorrect,
       score,
-      answersSnapshot: { jointId, answers: { ...answers } },
+      answersSnapshot: snapshot(),
       feedbackMessages: Object.values(feedbacks).map(f => f.message),
       misconceptions: Array.from(localMisconceptions),
       hintLevelUsed: hintLevel

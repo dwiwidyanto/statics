@@ -2,6 +2,7 @@
   import { locale } from '../../../lib/utils/i18n';
   import type { TrussModel } from '../../../lib/domain/truss/types';
   import type { DeterminacyAnswers } from '../../../lib/domain/truss/guidedTypes';
+  import type { DeterminacySnapshot } from '../../../lib/domain/progress/types';
   import { countTrussUnknowns, classifyTrussByCount } from '../../../lib/domain/truss/guidedWorkflow';
   import { guidedHints, getHintText } from '../../../lib/domain/truss/guidedHints';
 
@@ -11,7 +12,7 @@
   export let onStepAttempt: (data: {
     isCorrect: boolean;
     score: number;
-    answersSnapshot: any;
+    answersSnapshot: DeterminacySnapshot;
     feedbackMessages: string[];
     misconceptions: string[];
     hintLevelUsed: number;
@@ -30,7 +31,7 @@
       onStepAttempt({
         isCorrect: false,
         score: 0.0,
-        answersSnapshot: { m: answers.m, r: answers.r, j: answers.j, classification: answers.classification },
+        answersSnapshot: { kind: 'determinacy', m: answers.m, r: answers.r, j: answers.j, classification: answers.classification },
         feedbackMessages: [$locale === 'id' ? `Meminta petunjuk tingkat ${hintLevel}` : `Requested hint level ${hintLevel}`],
         misconceptions: [],
         hintLevelUsed: hintLevel
@@ -92,7 +93,7 @@
     onStepAttempt({
       isCorrect,
       score: isCorrect ? 1.0 : 0.0,
-      answersSnapshot: { m: mVal, r: rVal, j: jVal, classification: classVal },
+      answersSnapshot: { kind: 'determinacy', m: mVal, r: rVal, j: jVal, classification: classVal },
       feedbackMessages: errors.length > 0 ? errors : [feedbackMessage],
       misconceptions: localMisconceptions,
       hintLevelUsed: hintLevel

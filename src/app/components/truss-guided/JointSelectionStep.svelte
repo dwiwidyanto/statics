@@ -4,6 +4,7 @@
   import { checkJointCanBeSolved, getRecommendedNextJoints, getUnknownMembersAtJoint } from '../../../lib/domain/truss/guidedWorkflow';
   import type { JointSelectionFeedback } from '../../../lib/domain/truss/guidedTypes';
   import { guidedHints, getHintText } from '../../../lib/domain/truss/guidedHints';
+  import type { JointSequenceSnapshot } from '../../../lib/domain/progress/types';
 
   export let truss: TrussModel;
   export let solvedMemberIds: string[];
@@ -11,7 +12,7 @@
   export let onStepAttempt: (data: {
     isCorrect: boolean;
     score: number;
-    answersSnapshot: any;
+    answersSnapshot: JointSequenceSnapshot;
     feedbackMessages: string[];
     misconceptions: string[];
     hintLevelUsed: number;
@@ -23,6 +24,19 @@
   let hintLevel = 0;
 
   $: hintText = hintLevel > 0 ? getHintText(guidedHints.wrong_joint_order, hintLevel, $locale) : '';
+  $: recommendedJoints = getRecommendedNextJoints(truss, solvedMemberIds);
+  $: availableJointIds = truss.joints
+    .filter(j => getUnknownMembersAtJoint(truss, j.id, solvedMemberIds).length > 0)
+    .map(j => j.id);
+
+  function snapshot(jointId: string | null): JointSequenceSnapshot {
+    return {
+      kind: 'joint_sequence',
+      jointId,
+      availableJointIds,
+      recommendedJointIds: recommendedJoints
+    };
+  }
 
   function handleNeedHint() {
     if (hintLevel < 3) {
@@ -30,15 +44,13 @@
       onStepAttempt({
         isCorrect: false,
         score: 0.0,
-        answersSnapshot: { jointId: selectedJointId, solvedMemberIds },
+        answersSnapshot: snapshot(selectedJointId),
         feedbackMessages: [$locale === 'id' ? `Meminta petunjuk tingkat ${hintLevel}` : `Requested hint level ${hintLevel}`],
         misconceptions: [],
         hintLevelUsed: hintLevel
       });
     }
   }
-
-  const recommendedJoints = getRecommendedNextJoints(truss, solvedMemberIds);
 
   function selectJoint(id: string) {
     selectedJointId = id;
@@ -52,7 +64,7 @@
     onStepAttempt({
       isCorrect: feedback.isValid,
       score: feedback.isValid ? 1.0 : 0.0,
-      answersSnapshot: { jointId: id, solvedMemberIds },
+      answersSnapshot: snapshot(id),
       feedbackMessages: [feedback.message],
       misconceptions: localMisconceptions,
       hintLevelUsed: hintLevel

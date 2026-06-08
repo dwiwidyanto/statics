@@ -3,6 +3,7 @@
   import { checkIndividualAnswer } from '../../../lib/domain/truss/scoring';
   import type { AnswerFeedback } from '../../../lib/domain/truss/scoring';
   import { guidedHints, getHintText } from '../../../lib/domain/truss/guidedHints';
+  import type { ReactionsSnapshot } from '../../../lib/domain/progress/types';
 
   export let reactionsReference: Record<string, number>;
   export let answers: Record<string, number | null>;
@@ -10,7 +11,7 @@
   export let onStepAttempt: (data: {
     isCorrect: boolean;
     score: number;
-    answersSnapshot: any;
+    answersSnapshot: ReactionsSnapshot;
     feedbackMessages: string[];
     misconceptions: string[];
     hintLevelUsed: number;
@@ -30,7 +31,7 @@
       onStepAttempt({
         isCorrect: false,
         score: 0.0,
-        answersSnapshot: { ...answers },
+        answersSnapshot: { kind: 'reactions', answers: { ...answers } },
         feedbackMessages: [$locale === 'id' ? `Meminta petunjuk tingkat ${hintLevel}` : `Requested hint level ${hintLevel}`],
         misconceptions: [],
         hintLevelUsed: hintLevel
@@ -74,7 +75,7 @@
     onStepAttempt({
       isCorrect,
       score,
-      answersSnapshot: { ...answers },
+      answersSnapshot: { kind: 'reactions', answers: { ...answers } },
       feedbackMessages: Object.values(feedbacks).map(f => f.message),
       misconceptions: Array.from(localMisconceptions),
       hintLevelUsed: hintLevel

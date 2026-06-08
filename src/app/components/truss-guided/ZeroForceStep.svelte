@@ -4,6 +4,7 @@
   import { checkZeroForceSelection } from '../../../lib/domain/truss/guidedWorkflow';
   import type { ZeroForceSelectionFeedback } from '../../../lib/domain/truss/guidedTypes';
   import { guidedHints, getHintText } from '../../../lib/domain/truss/guidedHints';
+  import type { ZeroForceSnapshot } from '../../../lib/domain/progress/types';
 
   export let truss: TrussModel;
   export let referenceZeroForceIds: string[];
@@ -12,7 +13,7 @@
   export let onStepAttempt: (data: {
     isCorrect: boolean;
     score: number;
-    answersSnapshot: any;
+    answersSnapshot: ZeroForceSnapshot;
     feedbackMessages: string[];
     misconceptions: string[];
     hintLevelUsed: number;
@@ -37,7 +38,7 @@
       onStepAttempt({
         isCorrect: false,
         score: 0.0,
-        answersSnapshot: [...zeroForceSelections],
+        answersSnapshot: { kind: 'zero_members', selectedMemberIds: [...zeroForceSelections] },
         feedbackMessages: [$locale === 'id' ? `Meminta petunjuk tingkat ${hintLevel}` : `Requested hint level ${hintLevel}`],
         misconceptions: [],
         hintLevelUsed: hintLevel
@@ -64,7 +65,7 @@
     onStepAttempt({
       isCorrect,
       score,
-      answersSnapshot: [...zeroForceSelections],
+      answersSnapshot: { kind: 'zero_members', selectedMemberIds: [...zeroForceSelections] },
       feedbackMessages: [feedback.message],
       misconceptions: [
         ...(feedback.missedIds.length > 0 ? ['zero_force_missed'] : []),

@@ -15,6 +15,7 @@ import type {
   TopicStats,
 } from '../domain/progress/types';
 import { CURRENT_SCHEMA_VERSION } from '../domain/progress/types';
+import { normalizeAttempt, normalizeProgressData } from '../domain/progress/telemetryMigration';
 
 const STORAGE_KEY = 'staticslab.progress.v1';
 
@@ -29,33 +30,14 @@ function loadData(): ProgressData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyData();
 
-    const parsed = JSON.parse(raw);
-
-    // Basic shape validation
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      typeof parsed.schemaVersion !== 'number' ||
-      !Array.isArray(parsed.attempts)
-    ) {
-      console.warn('[StaticsLab] Malformed progress data in localStorage. Resetting.');
-      localStorage.removeItem(STORAGE_KEY);
-      return emptyData();
+    const normalized = normalizeProgressData(JSON.parse(raw));
+    for (const warning of normalized.warnings) {
+      console.warn(`[StaticsLab] ${warning}`);
     }
-
-    // Future: handle schema migrations here
-    if (parsed.schemaVersion > CURRENT_SCHEMA_VERSION) {
-      console.warn(
-        `[StaticsLab] Progress schema v${parsed.schemaVersion} is newer than supported v${CURRENT_SCHEMA_VERSION}. Resetting.`
-      );
-      localStorage.removeItem(STORAGE_KEY);
-      return emptyData();
-    }
-
-    return parsed as ProgressData;
+    if (normalized.warnings.length > 0) saveData(normalized.data);
+    return normalized.data;
   } catch {
-    console.warn('[StaticsLab] Failed to parse progress data. Resetting.');
-    localStorage.removeItem(STORAGE_KEY);
+    console.warn('[StaticsLab] Failed to parse progress data. Starting with empty progress.');
     return emptyData();
   }
 }
@@ -77,7 +59,9 @@ export class LocalProgressRepository implements ProgressRepository {
   }
 
   saveAttempt(attempt: Attempt): void {
-    this.data.attempts.push(attempt);
+    const normalized = normalizeAttempt(attempt);
+    if (!normalized) return;
+    this.data.attempts.push(normalized);
     saveData(this.data);
   }
 
@@ -182,6 +166,62 @@ export class LocalProgressRepository implements ProgressRepository {
       completedProblems,
       averageBestScore: scoredCount > 0 ? totalBestScore / scoredCount : 0,
       byTopic,
+    };
+  }
+
+  exportProgress(): ProgressData {
+    return {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      attempts: [...this.data.attempts],
+    };
+  }
+
+  importProgress(data: unknown, mode: 'replace' | 'merge'): {
+    importedAttempts: number;
+    skippedAttempts: number;
+    warnings: string[];
+  } {
+    const normalized = normalizeProgressData(data);
+    const skippedInvalid = normalized.warnings.filter(w => w.startsWith('Skipped invalid attempt')).length;
+
+    if (mode === 'replace') {
+      if (normalized.data.attempts.length === 0 && normalized.warnings.length > 0) {
+        return {
+          importedAttempts: 0,
+          skippedAttempts: skippedInvalid,
+          warnings: normalized.warnings,
+        };
+      }
+      this.data = normalized.data;
+      saveData(this.data);
+      return {
+        importedAttempts: normalized.data.attempts.length,
+        skippedAttempts: skippedInvalid,
+        warnings: normalized.warnings,
+      };
+    }
+
+    const existingById = new Map(this.data.attempts.map(attempt => [attempt.id, attempt]));
+    let added = 0;
+    for (const attempt of normalized.data.attempts) {
+      if (!existingById.has(attempt.id)) {
+        existingById.set(attempt.id, attempt);
+        added++;
+      }
+    }
+
+    this.data = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      attempts: Array.from(existingById.values()).sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ),
+    };
+    saveData(this.data);
+
+    return {
+      importedAttempts: added,
+      skippedAttempts: normalized.data.attempts.length - added + skippedInvalid,
+      warnings: normalized.warnings,
     };
   }
 
