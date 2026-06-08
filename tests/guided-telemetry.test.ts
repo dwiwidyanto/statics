@@ -6,6 +6,7 @@ import {
   calculateGuidedScore,
   getFirstAttemptAccuracy,
   getHintUsageSummary,
+  finalizeGuidedTelemetrySession,
   buildFinalAttemptFromTelemetry
 } from '../src/lib/domain/progress/guidedTelemetry';
 import type { GuidedStepAttempt, GuidedAttemptTelemetry } from '../src/lib/domain/progress/types';
@@ -194,13 +195,7 @@ describe('Guided Learning Telemetry Domain Logic', () => {
 
     expect(skillBreakdown.memberForces).toBe(0);
 
-    // Total score: weighted sum of default weights:
-    // determinacy: 0.15 * 1.0 = 0.15
-    // reactions: 0.25 * 0.7 = 0.175
-    // zero_members: 0.20 * 0.5 = 0.10
-    // joint_sequence: 0.10 * 0 = 0
-    // member_forces: 0.30 * 0 = 0
-    // Total = 0.15 + 0.175 + 0.10 = 0.425 -> rounded to 0.43
+    // Total uses the central guided score weights and rounds to 0.43.
     expect(totalScore).toBe(0.43);
   });
 
@@ -359,5 +354,233 @@ describe('Guided Learning Telemetry Domain Logic', () => {
     expect(attempt.feedback[0]).toContain('Misconception flagged: sign_reversed');
     expect(attempt.guidedTelemetry).toEqual(session);
     expect(attempt.answers).toEqual({ R_Ax: 300 });
+  });
+
+  it('finalizes perfect completed telemetry with matching saved attempt scores', () => {
+    const session = createGuidedAttemptSession(dummyProblem);
+    const stepAttempts: GuidedStepAttempt[] = [
+      {
+        stepId: 'determinacy',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'determinacy', m: 3, r: 3, j: 3, classification: 'statically_determinate' },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'reactions',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'reactions', answers: { R_Ax: 0 } },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'zero_members',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'zero_members', selectedMemberIds: ['m3'] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'joint_sequence',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'joint_sequence', jointId: 'j-a', availableJointIds: ['j-a'], recommendedJointIds: ['j-a'] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'member_forces',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'member_forces', jointId: 'j-a', answers: { m1: 10, m2: -10 }, unknownMemberIds: ['m1', 'm2'] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      }
+    ];
+    const result = finalizeGuidedTelemetrySession(
+      { ...session, stepAttempts },
+      { R_Ax: 0, m1: 10, m2: -10, m3: 0 },
+      { requiredMemberIds: ['m1', 'm2', 'm3'], solvedMemberIds: ['m1', 'm2', 'm3'] },
+      '2026-06-09T00:00:00Z'
+    );
+    const attempt = buildFinalAttemptFromTelemetry(result.session);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.session.completed).toBe(true);
+    expect(result.session.totalScore).toBe(1);
+    expect(attempt.score).toBe(result.session.totalScore);
+    expect(attempt.skillBreakdown).toEqual(result.session.skillBreakdown);
+    expect(attempt.guidedTelemetry?.totalScore).toBe(attempt.score);
+  });
+
+  it('finalization applies hints and repeated wrong attempts to saved score', () => {
+    const session = createGuidedAttemptSession(dummyProblem);
+    const stepAttempts: GuidedStepAttempt[] = [
+      {
+        stepId: 'determinacy',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'determinacy', m: 3, r: 3, j: 3, classification: 'statically_determinate' },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'reactions',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: false,
+        score: 0,
+        answersSnapshot: { kind: 'reactions', answers: { R_Ax: 10 } },
+        feedbackMessages: [],
+        misconceptions: ['sign_reversed'],
+        hintLevelUsed: 2
+      },
+      {
+        stepId: 'reactions',
+        attemptNumber: 2,
+        createdAt: '',
+        isCorrect: false,
+        score: 0,
+        answersSnapshot: { kind: 'reactions', answers: { R_Ax: -5 } },
+        feedbackMessages: [],
+        misconceptions: ['sign_reversed'],
+        hintLevelUsed: 2
+      },
+      {
+        stepId: 'reactions',
+        attemptNumber: 3,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'reactions', answers: { R_Ax: 0 } },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 2
+      },
+      {
+        stepId: 'zero_members',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'zero_members', selectedMemberIds: ['m3'] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'joint_sequence',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'joint_sequence', jointId: 'j-a', availableJointIds: ['j-a'], recommendedJointIds: ['j-a'] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'member_forces',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'member_forces', jointId: 'j-a', answers: { m1: 10, m2: -10 }, unknownMemberIds: ['m1', 'm2'] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      }
+    ];
+    const result = finalizeGuidedTelemetrySession(
+      { ...session, stepAttempts },
+      {},
+      { requiredMemberIds: ['m1', 'm2', 'm3'], solvedMemberIds: ['m1', 'm2', 'm3'] }
+    );
+    const attempt = buildFinalAttemptFromTelemetry(result.session);
+
+    expect(result.session.skillBreakdown.reactions).toBe(0.5);
+    expect(result.session.totalScore).toBe(0.88);
+    expect(attempt.score).toBe(result.session.totalScore);
+  });
+
+  it('does not complete when member force telemetry evidence is missing', () => {
+    const session = createGuidedAttemptSession(dummyProblem);
+    const stepAttempts: GuidedStepAttempt[] = [
+      {
+        stepId: 'determinacy',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'determinacy', m: 3, r: 3, j: 3, classification: 'statically_determinate' },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'reactions',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'reactions', answers: {} },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'zero_members',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'zero_members', selectedMemberIds: [] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      },
+      {
+        stepId: 'joint_sequence',
+        attemptNumber: 1,
+        createdAt: '',
+        isCorrect: true,
+        score: 1,
+        answersSnapshot: { kind: 'joint_sequence', jointId: 'j-a', availableJointIds: ['j-a'], recommendedJointIds: ['j-a'] },
+        feedbackMessages: [],
+        misconceptions: [],
+        hintLevelUsed: 0
+      }
+    ];
+
+    const result = finalizeGuidedTelemetrySession(
+      { ...session, stepAttempts },
+      { m1: 10 },
+      { requiredMemberIds: ['m1'], solvedMemberIds: ['m1'] }
+    );
+
+    expect(result.session.skillBreakdown.memberForces).toBe(0);
+    expect(result.session.completed).toBe(false);
+    expect(result.warnings.some(warning => warning.includes('missing telemetry evidence'))).toBe(true);
   });
 });

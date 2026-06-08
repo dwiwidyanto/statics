@@ -3,6 +3,7 @@ import {
   type Attempt,
   type GuidedAnswersSnapshot,
   type GuidedAttemptTelemetry,
+  type GuidedSkillBreakdown,
   type GuidedStepAttempt,
   type GuidedStepId,
   type ProgressData
@@ -33,6 +34,17 @@ function numberRecord(value: unknown): Record<string, number> {
     if (typeof raw === 'number' && Number.isFinite(raw)) out[key] = raw;
   }
   return out;
+}
+
+function guidedSkillBreakdown(value: unknown): GuidedSkillBreakdown {
+  const raw = numberRecord(value);
+  return {
+    determinacy: raw.determinacy ?? 0,
+    reactions: raw.reactions ?? 0,
+    zeroForceMembers: raw.zeroForceMembers ?? 0,
+    jointSelection: raw.jointSelection ?? 0,
+    memberForces: raw.memberForces ?? 0
+  };
 }
 
 function nullableNumberRecord(value: unknown): Record<string, number | null> {
@@ -152,7 +164,7 @@ export function normalizeGuidedTelemetry(raw: unknown): GuidedAttemptTelemetry |
     completed: raw.completed === true,
     stepAttempts,
     misconceptionCounts: numberRecord(raw.misconceptionCounts),
-    skillBreakdown: numberRecord(raw.skillBreakdown),
+    skillBreakdown: guidedSkillBreakdown(raw.skillBreakdown),
     finalAnswers: numberRecord(raw.finalAnswers)
   };
 }

@@ -1,4 +1,4 @@
-import type { Attempt, GuidedAttemptTelemetry, GuidedStepAttempt, GuidedStepId } from './types';
+import type { Attempt, GuidedAttemptTelemetry, GuidedSkillBreakdown, GuidedStepAttempt, GuidedStepId } from './types';
 
 export const guidedScoreWeights = {
   overview: 0,
@@ -9,6 +9,19 @@ export const guidedScoreWeights = {
   member_forces: 0.30,
   summary: 0
 } as const satisfies Record<GuidedStepId, number>;
+
+export const GUIDED_COMPLETION_THRESHOLD = 0.8;
+
+export interface GuidedCompletionEvidence {
+  requiredMemberIds: string[];
+  solvedMemberIds: string[];
+}
+
+export interface GuidedFinalizationResult {
+  session: GuidedAttemptTelemetry;
+  canSaveCompletedAttempt: boolean;
+  warnings: string[];
+}
 
 /**
  * Creates a new guided telemetry session.
@@ -87,7 +100,7 @@ export function calculateGuidedScore(
   customWeights?: Partial<Record<GuidedStepId, number>>
 ): {
   totalScore: number;
-  skillBreakdown: Record<string, number>;
+  skillBreakdown: GuidedSkillBreakdown;
 } {
   const weights = { ...guidedScoreWeights, ...customWeights };
 
@@ -243,6 +256,88 @@ export function getHintUsageSummary(stepAttempts: GuidedStepAttempt[]): {
   };
 }
 
+function hasCorrectStepAttempt(stepAttempts: GuidedStepAttempt[], stepId: GuidedStepId): boolean {
+  return stepAttempts.some(attempt => attempt.stepId === stepId && attempt.isCorrect);
+}
+
+function getMemberForceEvidence(stepAttempts: GuidedStepAttempt[]): Set<string> {
+  const evidence = new Set<string>();
+  for (const attempt of stepAttempts) {
+    if (attempt.stepId === 'zero_members' && attempt.isCorrect) {
+      for (const memberId of attempt.answersSnapshot.selectedMemberIds) {
+        evidence.add(memberId);
+      }
+    }
+    if (attempt.stepId === 'member_forces' && attempt.isCorrect) {
+      for (const memberId of attempt.answersSnapshot.unknownMemberIds) {
+        evidence.add(memberId);
+      }
+    }
+  }
+  return evidence;
+}
+
+export function validateGuidedCompletionEvidence(
+  session: GuidedAttemptTelemetry,
+  evidence: GuidedCompletionEvidence
+): string[] {
+  const warnings: string[] = [];
+  const stepAttempts = session.stepAttempts;
+
+  if (!hasCorrectStepAttempt(stepAttempts, 'determinacy')) {
+    warnings.push('Determinacy has not been completed correctly.');
+  }
+  if (!hasCorrectStepAttempt(stepAttempts, 'reactions')) {
+    warnings.push('Support reactions have not been completed correctly.');
+  }
+  if (!hasCorrectStepAttempt(stepAttempts, 'zero_members')) {
+    warnings.push('Zero-force members have not been completed correctly.');
+  }
+  if (!stepAttempts.some(attempt => attempt.stepId === 'joint_sequence')) {
+    warnings.push('Joint sequence evidence is missing.');
+  }
+
+  const solvedMemberIds = new Set(evidence.solvedMemberIds);
+  const memberEvidence = getMemberForceEvidence(stepAttempts);
+  for (const memberId of evidence.requiredMemberIds) {
+    if (!solvedMemberIds.has(memberId)) {
+      warnings.push(`Member ${memberId} has not been solved.`);
+    } else if (!memberEvidence.has(memberId)) {
+      warnings.push(`Member ${memberId} is missing telemetry evidence.`);
+    }
+  }
+
+  return warnings;
+}
+
+export function finalizeGuidedTelemetrySession(
+  session: GuidedAttemptTelemetry,
+  finalAnswers: Record<string, number>,
+  completionEvidence: GuidedCompletionEvidence,
+  completedAt = new Date().toISOString()
+): GuidedFinalizationResult {
+  const scoredResult = calculateGuidedScore(session.stepAttempts);
+  const evidenceWarnings = validateGuidedCompletionEvidence(session, completionEvidence);
+  const completed = scoredResult.totalScore >= GUIDED_COMPLETION_THRESHOLD && evidenceWarnings.length === 0;
+  const scoreWarning = scoredResult.totalScore >= GUIDED_COMPLETION_THRESHOLD
+    ? []
+    : [`Score ${scoredResult.totalScore.toFixed(2)} is below the completion threshold ${GUIDED_COMPLETION_THRESHOLD.toFixed(2)}.`];
+
+  return {
+    session: {
+      ...session,
+      completedAt,
+      totalScore: scoredResult.totalScore,
+      completed,
+      finalAnswers: { ...finalAnswers },
+      skillBreakdown: { ...scoredResult.skillBreakdown },
+      misconceptionCounts: summarizeMisconceptions(session.stepAttempts)
+    },
+    canSaveCompletedAttempt: completed,
+    warnings: [...evidenceWarnings, ...scoreWarning]
+  };
+}
+
 /**
  * Creates a standard Attempt record for repository storage from the telemetry session.
  */
@@ -265,7 +360,7 @@ export function buildFinalAttemptFromTelemetry(session: GuidedAttemptTelemetry):
       : ['Guided learning completed perfectly!'],
     completed: session.completed,
     topic: session.topic,
-    skillBreakdown: session.skillBreakdown,
+    skillBreakdown: { ...session.skillBreakdown },
     misconceptions: uniqueMisconceptions,
     guidedTelemetry: session
   };

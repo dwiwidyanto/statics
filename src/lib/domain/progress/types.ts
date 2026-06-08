@@ -60,6 +60,14 @@ export type GuidedAnswersSnapshot =
   | JointSequenceSnapshot
   | MemberForcesSnapshot;
 
+export interface GuidedSkillBreakdown {
+  determinacy: number;
+  reactions: number;
+  zeroForceMembers: number;
+  jointSelection: number;
+  memberForces: number;
+}
+
 export interface BaseStepAttempt {
   createdAt: string; // ISO 8601
   isCorrect: boolean;
@@ -119,7 +127,7 @@ export interface GuidedAttemptTelemetry {
   completed: boolean;
   stepAttempts: GuidedStepAttempt[];
   misconceptionCounts: Record<string, number>;
-  skillBreakdown: Record<string, number>;
+  skillBreakdown: GuidedSkillBreakdown;
   finalAnswers: Record<string, number>;
 }
 

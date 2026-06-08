@@ -3,11 +3,12 @@
   import { trussProblems } from '../../content/problems/truss-problems';
   import { solveTruss } from '../../lib/domain/truss/solver';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
-  import type { Attempt, GuidedAnswersSnapshot, GuidedAttemptTelemetry, GuidedStepAttempt, GuidedStepId } from '../../lib/domain/progress/types';
+  import type { GuidedAnswersSnapshot, GuidedStepId } from '../../lib/domain/progress/types';
   import {
     createGuidedAttemptSession,
     recordStepAttempt,
     calculateGuidedScore,
+    finalizeGuidedTelemetrySession,
     buildFinalAttemptFromTelemetry
   } from '../../lib/domain/progress/guidedTelemetry';
   import type { GuidedTrussStep, GuidedTrussState, DeterminacyAnswers } from '../../lib/domain/truss/guidedTypes';
@@ -65,12 +66,8 @@
 
   let misconceptions: string[] = [];
   let isSaved = false;
+  let completionWarning: string | null = null;
   let telemetrySession = createGuidedAttemptSession(activeProblem);
-
-  // Track sub-scores for averaging
-  let jointSelectionErrorsCount = 0;
-  let memberForcesAttempts = 0;
-  let memberForcesErrorsCount = 0;
 
   // Reset states when activeProblem changes
   $: if (activeProblem) {
@@ -88,9 +85,7 @@
     scoreBreakdown = { determinacy: 0, reactions: 0, zeroForceMembers: 0, jointSelection: 0, memberForces: 0 };
     misconceptions = [];
     isSaved = false;
-    jointSelectionErrorsCount = 0;
-    memberForcesAttempts = 0;
-    memberForcesErrorsCount = 0;
+    completionWarning = null;
     telemetrySession = createGuidedAttemptSession(activeProblem);
   }
 
@@ -117,13 +112,7 @@
     });
 
     const scoredResult = calculateGuidedScore(telemetrySession.stepAttempts);
-    scoreBreakdown = {
-      determinacy: scoredResult.skillBreakdown.determinacy,
-      reactions: scoredResult.skillBreakdown.reactions,
-      zeroForceMembers: scoredResult.skillBreakdown.zeroForceMembers,
-      jointSelection: scoredResult.skillBreakdown.jointSelection,
-      memberForces: scoredResult.skillBreakdown.memberForces
-    };
+    scoreBreakdown = { ...scoredResult.skillBreakdown };
     misconceptions = Array.from(new Set(telemetrySession.stepAttempts.flatMap(a => a.misconceptions)));
   }
 
@@ -133,13 +122,11 @@
   }
 
   function handleCompleteDeterminacy(stepScore: number, stepMisconceptions: string[]) {
-    scoreBreakdown.determinacy = stepScore;
     misconceptions = [...misconceptions, ...stepMisconceptions];
     currentStep = 'reactions';
   }
 
   function handleCompleteReactions(stepScore: number, stepMisconceptions: string[]) {
-    scoreBreakdown.reactions = stepScore;
     misconceptions = [...misconceptions, ...stepMisconceptions];
     // Copy reference reactions to solved reactions to show them on canvas/next steps
     solvedReactions = { ...solverResult.reactions };
@@ -147,7 +134,6 @@
   }
 
   function handleCompleteZeroForce(stepScore: number, stepMisconceptions: string[]) {
-    scoreBreakdown.zeroForceMembers = stepScore;
     misconceptions = [...misconceptions, ...stepMisconceptions];
     
     // Add correct zero-force members immediately to solved list
@@ -163,18 +149,11 @@
 
   function handleSelectJoint(jointId: string, stepMisconceptions: string[]) {
     misconceptions = [...misconceptions, ...stepMisconceptions];
-    if (stepMisconceptions.length > 0) {
-      jointSelectionErrorsCount++;
-    }
     currentSolvingJointId = jointId;
   }
 
   function handleSolveJointForces(solvedForces: Record<string, number>, stepScore: number, stepMisconceptions: string[]) {
     misconceptions = [...misconceptions, ...stepMisconceptions];
-    memberForcesAttempts++;
-    if (stepScore < 0.99) {
-      memberForcesErrorsCount++;
-    }
 
     // Accumulate solved forces
     for (const [mId, force] of Object.entries(solvedForces)) {
@@ -192,26 +171,18 @@
 
     // Check if all members are solved
     if (solvedMemberIds.length >= activeProblem.members.length) {
-      // Complete MoJ sequence
-      scoreBreakdown.jointSelection = jointSelectionErrorsCount === 0 ? 1.0 : Math.max(0, 1.0 - (jointSelectionErrorsCount * 0.15));
-      scoreBreakdown.memberForces = memberForcesAttempts > 0 ? (memberForcesAttempts - memberForcesErrorsCount) / memberForcesAttempts : 1.0;
-      
-      currentStep = 'summary';
-      saveAttempt();
+      if (saveAttempt()) {
+        currentStep = 'summary';
+      }
     }
   }
 
-  // Calculate overall weighted score
-  $: overallScore = (
-    0.15 * scoreBreakdown.determinacy +
-    0.25 * scoreBreakdown.reactions +
-    0.20 * scoreBreakdown.zeroForceMembers +
-    0.10 * scoreBreakdown.jointSelection +
-    0.30 * scoreBreakdown.memberForces
-  );
+  $: scoredResult = calculateGuidedScore(telemetrySession.stepAttempts);
+  $: overallScore = scoredResult.totalScore;
+  $: scoreBreakdown = { ...scoredResult.skillBreakdown };
 
-  function saveAttempt() {
-    if (isSaved) return;
+  function saveAttempt(): boolean {
+    if (isSaved) return true;
 
     const flatAnswers: Record<string, number> = {};
     for (const [k, v] of Object.entries(reactionAnswers)) {
@@ -221,12 +192,16 @@
       flatAnswers[k] = v;
     }
 
-    // Update telemetry session with final scores and outputs
-    telemetrySession.completedAt = new Date().toISOString();
-    telemetrySession.totalScore = overallScore;
-    telemetrySession.completed = overallScore >= 0.8;
-    telemetrySession.finalAnswers = flatAnswers;
-    telemetrySession.skillBreakdown = { ...scoreBreakdown };
+    const finalized = finalizeGuidedTelemetrySession(telemetrySession, flatAnswers, {
+      requiredMemberIds: activeProblem.members.map(member => member.id),
+      solvedMemberIds
+    });
+    telemetrySession = finalized.session;
+
+    if (finalized.warnings.some(warning => !warning.startsWith('Score '))) {
+      completionWarning = finalized.warnings.join(' ');
+      return false;
+    }
 
     const attempt = buildFinalAttemptFromTelemetry(telemetrySession);
 
@@ -234,6 +209,7 @@
     isSaved = true;
     showToast = true;
     setTimeout(() => { showToast = false; }, 3000);
+    return true;
   }
 
   function handleFinish() {
@@ -246,6 +222,13 @@
   {#if showToast}
     <div class="toast-notification" role="alert">
       <span>✅ {$locale === 'id' ? 'Progres belajar disimpan!' : 'Learning progress saved!'}</span>
+    </div>
+  {/if}
+
+  {#if completionWarning}
+    <div class="completion-warning" role="alert">
+      <strong>{$locale === 'id' ? 'Belum bisa menyimpan ringkasan.' : 'Summary is not ready to save.'}</strong>
+      <span>{completionWarning}</span>
     </div>
   {/if}
 
@@ -390,6 +373,18 @@
     font-size: 0.9rem;
     font-weight: 700;
     animation: slideIn 0.3s ease-out;
+  }
+
+  .completion-warning {
+    background-color: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--text-primary);
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.86rem;
   }
 
   @keyframes slideIn {
