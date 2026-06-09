@@ -25,6 +25,14 @@
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-info: #06b6d4;
+  --status-success-bg: rgba(16, 185, 129, 0.08);
+  --status-success-border: rgba(16, 185, 129, 0.25);
+  --status-warning-bg: rgba(245, 158, 11, 0.08);
+  --status-warning-border: rgba(245, 158, 11, 0.25);
+  --status-danger-bg: rgba(239, 68, 68, 0.08);
+  --status-danger-border: rgba(239, 68, 68, 0.25);
+  --status-info-bg: rgba(59, 130, 246, 0.08);
+  --status-info-border: rgba(59, 130, 246, 0.25);
 
   --color-force: #dc2626;      /* Red for applied loads */
   --color-reaction: #4f46e5;   /* Indigo for reaction forces */

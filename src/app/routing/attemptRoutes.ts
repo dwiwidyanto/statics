@@ -32,19 +32,24 @@ export function getAttemptNavigationTarget(attempt: Attempt, allProblems: AnyPro
 
 export function routeFromRecommendationTarget(targetRoute?: string | LearningRecommendationTarget, guidedTruss = false): Route | null {
   if (!targetRoute) return null;
+  const hasId = (id: string | undefined): id is string => !!id && id.trim().length > 0;
   if (typeof targetRoute !== 'string') {
-    if (targetRoute.kind === 'guided_truss') return { page: 'trusses-guided', problemId: targetRoute.problemId };
-    if (targetRoute.kind === 'truss_practice') return { page: 'trusses', problemId: targetRoute.problemId };
-    if (targetRoute.kind === 'guided_beam') return { page: 'guided', problemId: targetRoute.problemId };
-    if (targetRoute.kind === 'practice') return { page: 'practice', problemId: targetRoute.problemId };
-    if (targetRoute.kind === 'attempt_review') return { page: 'attempt-review', attemptId: targetRoute.attemptId };
+    if (targetRoute.kind === 'guided_truss') return hasId(targetRoute.problemId) ? { page: 'trusses-guided', problemId: targetRoute.problemId } : { page: 'dashboard' };
+    if (targetRoute.kind === 'truss_practice') return hasId(targetRoute.problemId) ? { page: 'trusses', problemId: targetRoute.problemId } : { page: 'dashboard' };
+    if (targetRoute.kind === 'guided_beam') return hasId(targetRoute.problemId) ? { page: 'guided', problemId: targetRoute.problemId } : { page: 'dashboard' };
+    if (targetRoute.kind === 'practice') return hasId(targetRoute.problemId) ? { page: 'practice', problemId: targetRoute.problemId } : { page: 'dashboard' };
+    if (targetRoute.kind === 'attempt_review') return hasId(targetRoute.attemptId) ? { page: 'attempt-review', attemptId: targetRoute.attemptId } : { page: 'dashboard' };
     return { page: 'progress' };
   }
   if (targetRoute.startsWith('trusses:')) {
     const problemId = targetRoute.split(':')[1];
+    if (!hasId(problemId)) return { page: 'dashboard' };
     return guidedTruss ? { page: 'trusses-guided', problemId } : { page: 'trusses', problemId };
   }
-  if (targetRoute.startsWith('guided/')) return { page: 'guided', problemId: targetRoute.substring(7) };
+  if (targetRoute.startsWith('guided/')) {
+    const problemId = targetRoute.substring(7);
+    return hasId(problemId) ? { page: 'guided', problemId } : { page: 'dashboard' };
+  }
   if (targetRoute === 'progress') return { page: 'progress' };
   return { page: 'dashboard' };
 }

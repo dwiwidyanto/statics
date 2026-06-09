@@ -1,6 +1,9 @@
 <script lang="ts">
   import { locale } from '../../../lib/utils/i18n';
   import type { ProgressImportPlan } from '../../../lib/services/progressImportPlan';
+  import Button from '../../../lib/ui/Button.svelte';
+  import ConfirmPanel from '../../../lib/ui/ConfirmPanel.svelte';
+  import StatusBanner from '../../../lib/ui/StatusBanner.svelte';
 
   export let plan: ProgressImportPlan;
   export let onMerge: () => void;
@@ -25,40 +28,41 @@
     </p>
 
     {#if plan.warnings.length > 0}
-      <div class="import-warning-list" role="alert">
+      <StatusBanner tone="warning" role="alert">
         {#each plan.warnings as warning}
           <p>{warning}</p>
         {/each}
-      </div>
+      </StatusBanner>
     {/if}
 
     <div class="import-options">
-      <button class="btn btn-primary" disabled={!plan.canMerge} on:click={onMerge}>
+      <Button variant="primary" fullWidth disabled={!plan.canMerge} on:click={onMerge}>
         <strong>{$locale === 'id' ? 'Gabungkan Progres' : 'Merge Progress'}</strong>
         <span>{$locale === 'id' ? 'Menyimpan progres saat ini dan menambahkan data baru' : 'Keep existing attempts and add new ones'}</span>
-      </button>
+      </Button>
 
       {#if plan.canReplaceSafely}
-        <button class="btn btn-danger" on:click={onReplace}>
+        <Button variant="danger" fullWidth on:click={onReplace}>
           <strong>{$locale === 'id' ? 'Ganti Seluruh Progres' : 'Replace Entire Progress'}</strong>
           <span>{$locale === 'id' ? 'Menghapus progres saat ini terlebih dahulu' : 'Erase current progress first'}</span>
-        </button>
+        </Button>
       {:else if plan.requiresDangerousEmptyReplaceConfirmation}
-        <div class="danger-zone">
-          <p>
-            {$locale === 'id'
-              ? 'Berkas ini tidak memiliki percobaan valid. Mengganti progres akan menghapus semua progres lokal.'
-              : 'This file has zero valid attempts. Replacing progress will erase all local progress.'}
-          </p>
-          <button class="btn btn-danger danger-confirm" on:click={onDangerousEmptyReplace}>
-            {$locale === 'id' ? 'Ya, hapus semua progres dan impor berkas kosong' : 'Yes, erase all progress and import empty file'}
-          </button>
-        </div>
+        <ConfirmPanel
+          danger
+          title={$locale === 'id' ? 'Berkas impor kosong' : 'Empty import file'}
+          message={$locale === 'id'
+            ? 'Berkas ini tidak memiliki percobaan valid. Mengganti progres akan menghapus semua progres lokal.'
+            : 'This file has zero valid attempts. Replacing progress will erase all local progress.'}
+          confirmLabel={$locale === 'id' ? 'Ya, hapus semua progres' : 'Yes, erase progress'}
+          cancelLabel={$locale === 'id' ? 'Batal' : 'Cancel'}
+          on:confirm={onDangerousEmptyReplace}
+          on:cancel={onCancel}
+        />
       {/if}
 
-      <button class="btn btn-secondary" on:click={onCancel}>
+      <Button variant="secondary" fullWidth on:click={onCancel}>
         {$locale === 'id' ? 'Batal' : 'Cancel'}
-      </button>
+      </Button>
     </div>
   </div>
 </div>
@@ -120,44 +124,16 @@
     gap: 0.75rem;
   }
 
-  .import-warning-list,
-  .danger-zone {
-    border: 1px solid rgba(245, 158, 11, 0.25);
-    background-color: rgba(245, 158, 11, 0.08);
-    border-radius: 8px;
-    padding: 0.75rem;
-  }
-
-  .danger-zone {
-    border-color: rgba(239, 68, 68, 0.35);
-    background-color: rgba(239, 68, 68, 0.08);
-  }
-
-  .btn {
-    font-size: 0.85rem;
-    font-weight: 700;
-    padding: 0.6rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    border: none;
-  }
-
-  .import-options .btn:not(.danger-confirm) {
-    display: flex;
+  .import-options :global(button) {
     flex-direction: column;
     align-items: flex-start;
     text-align: left;
     gap: 0.15rem;
   }
 
-  .import-options .btn span {
+  .import-options :global(button span) {
     font-size: 0.75rem;
     font-weight: normal;
     opacity: 0.8;
   }
-
-  .btn-primary { background-color: var(--color-primary); color: white; }
-  .btn-secondary { background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); }
-  .btn-danger { background-color: #ef4444; color: white; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

@@ -44,5 +44,14 @@ describe('attempt route decisions', () => {
     expect(routeFromRecommendationTarget({ kind: 'truss_practice', problemId: 'truss-1' })).toEqual({ page: 'trusses', problemId: 'truss-1' });
     expect(routeFromRecommendationTarget({ kind: 'guided_beam', problemId: 'beam-1' })).toEqual({ page: 'guided', problemId: 'beam-1' });
     expect(routeFromRecommendationTarget({ kind: 'practice', problemId: 'starter-1' })).toEqual({ page: 'practice', problemId: 'starter-1' });
+    expect(routeFromRecommendationTarget({ kind: 'attempt_review', attemptId: 'att-1' })).toEqual({ page: 'attempt-review', attemptId: 'att-1' });
+  });
+
+  it('falls back safely for malformed recommendation routes', () => {
+    expect(routeFromRecommendationTarget('trusses:')).toEqual({ page: 'dashboard' });
+    expect(routeFromRecommendationTarget('guided/')).toEqual({ page: 'dashboard' });
+    expect(routeFromRecommendationTarget('unknown-route')).toEqual({ page: 'dashboard' });
+    expect(routeFromRecommendationTarget({ kind: 'guided_truss', problemId: '' })).toEqual({ page: 'dashboard' });
+    expect(routeFromRecommendationTarget({ kind: 'attempt_review', attemptId: '' })).toEqual({ page: 'dashboard' });
   });
 });

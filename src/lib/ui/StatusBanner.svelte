@@ -16,23 +16,23 @@
   }
 
   .success {
-    background-color: rgba(16, 185, 129, 0.08);
-    border: 1px solid rgba(16, 185, 129, 0.25);
+    background-color: var(--status-success-bg, rgba(16, 185, 129, 0.08));
+    border: 1px solid var(--status-success-border, rgba(16, 185, 129, 0.25));
   }
 
   .warning {
-    background-color: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    background-color: var(--status-warning-bg, rgba(245, 158, 11, 0.08));
+    border: 1px solid var(--status-warning-border, rgba(245, 158, 11, 0.25));
   }
 
   .danger {
-    background-color: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-    color: #ef4444;
+    background-color: var(--status-danger-bg, rgba(239, 68, 68, 0.08));
+    border: 1px solid var(--status-danger-border, rgba(239, 68, 68, 0.25));
+    color: var(--color-error);
   }
 
   .info {
-    background-color: rgba(59, 130, 246, 0.08);
-    border: 1px solid rgba(59, 130, 246, 0.25);
+    background-color: var(--status-info-bg, rgba(59, 130, 246, 0.08));
+    border: 1px solid var(--status-info-border, rgba(59, 130, 246, 0.25));
   }
 </style>

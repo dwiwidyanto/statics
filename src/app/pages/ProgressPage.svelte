@@ -6,9 +6,6 @@
   import type { ProgressSummary, Attempt } from '../../lib/domain/progress/types';
   import type { AnyProblem } from '../../lib/services/progressRepository';
   import { computeLearningAnalytics } from '../../lib/domain/progress/analytics';
-  import { serializeProgressData } from '../../lib/services/progressExport';
-  import { serializeAttemptsCsv } from '../../lib/services/progressCsvExport';
-  import { createProgressImportPlan, type ProgressImportMode, type ProgressImportPlan } from '../../lib/services/progressImportPlan';
   import { buildLearningRecommendations, type LearningRecommendationTarget } from '../../lib/domain/progress/recommendations';
   import { routeFromRecommendationTarget } from '../routing/attemptRoutes';
   import type { Route } from '../routing/router';
@@ -20,8 +17,8 @@
   import RecentAttemptsList from '../components/progress/RecentAttemptsList.svelte';
   import MisconceptionSummary from '../components/progress/MisconceptionSummary.svelte';
   import ProgressActions from '../components/progress/ProgressActions.svelte';
-  import ProgressImportModal from '../components/progress/ProgressImportModal.svelte';
-  import ProgressImportResultBanner from '../components/progress/ProgressImportResultBanner.svelte';
+  import ProgressExportActions from '../components/progress/ProgressExportActions.svelte';
+  import ProgressImportController from '../components/progress/ProgressImportController.svelte';
   import ProgressDiagnosticsCard from '../components/progress/ProgressDiagnosticsCard.svelte';
   import RecommendedNextList from '../components/progress/RecommendedNextList.svelte';
 
@@ -32,27 +29,13 @@
 
   let summary: ProgressSummary = repo.getSummary(allProblems);
   let recentAttempts: Attempt[] = repo.getAttempts().slice(-10).reverse();
+  let allAttempts: Attempt[] = repo.getAttempts();
   let showResetConfirm = false;
 
-  // File import state
-  let importPlan: ProgressImportPlan | null = null;
-  let importingPayload: unknown = null;
-  let importError: string | null = null;
-  let importResult: {
-    mode: ProgressImportMode;
-    schemaVersion: number;
-    validAttempts: number;
-    importedAttempts: number;
-    replacedAttempts: number;
-    duplicateAttempts: number;
-    internalDuplicateAttempts: number;
-    skippedInvalidAttempts: number;
-    warnings: string[];
-  } | null = null;
-
   function refreshData() {
+    allAttempts = repo.getAttempts();
     summary = repo.getSummary(allProblems);
-    recentAttempts = repo.getAttempts().slice(-10).reverse();
+    recentAttempts = allAttempts.slice(-10).reverse();
   }
 
   function handleReset() {
@@ -108,111 +91,15 @@
 
   // Reactive calculations for learning analytics
   $: analytics = computeLearningAnalytics(
-    repo.getAttempts(),
+    allAttempts,
     allProblems,
     (id) => repo.getProblemProgress(id)
   );
   $: recommendations = buildLearningRecommendations({
-    attempts: repo.getAttempts(),
+    attempts: allAttempts,
     allProblems,
     maxItems: 3
   });
-
-  // Import / Export Logic
-  function handleExport() {
-    const dataStr = serializeProgressData(repo.exportProgress().attempts);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-
-    const exportFileDefaultName = 'staticslab_progress.json';
-
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  }
-
-  function handleInstructorCsvExport() {
-    const dataStr = serializeAttemptsCsv(repo.getAttempts());
-    const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(dataStr);
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', 'staticslab_instructor_attempts.csv');
-    linkElement.click();
-  }
-
-  function clearPendingImport() {
-    importError = null;
-    importPlan = null;
-    importingPayload = null;
-  }
-
-  function handleFileImport(event: Event) {
-    const target = event.target as HTMLInputElement;
-    const files = target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      try {
-        const parsed = JSON.parse(text);
-        importPlan = createProgressImportPlan(parsed, repo.getAttempts());
-        importingPayload = parsed;
-        importResult = null;
-        importError = null;
-      } catch {
-        importError = 'Failed to parse JSON text. File may be corrupted.';
-        importPlan = null;
-        importingPayload = null;
-      }
-    };
-    reader.onerror = () => {
-      importError = 'Failed to read import file.';
-      importPlan = null;
-      importingPayload = null;
-    };
-    reader.readAsText(file);
-    target.value = '';
-  }
-
-  function handleConfirmMerge() {
-    if (!importingPayload || !importPlan) return;
-    const result = repo.importProgress(importingPayload, 'merge');
-    importResult = {
-      mode: 'merge',
-      schemaVersion: result.schemaVersion,
-      validAttempts: result.validAttempts,
-      importedAttempts: result.importedAttempts,
-      replacedAttempts: result.replacedAttempts,
-      duplicateAttempts: result.duplicateAttempts,
-      internalDuplicateAttempts: result.internalDuplicateAttempts,
-      skippedInvalidAttempts: importPlan.skippedInvalidCount,
-      warnings: result.warnings
-    };
-    importPlan = null;
-    importingPayload = null;
-    refreshData();
-  }
-
-  function handleConfirmReplace(allowDangerousEmptyReplace = false) {
-    if (!importingPayload || !importPlan) return;
-    const result = repo.importProgress(importingPayload, 'replace', { allowDangerousEmptyReplace });
-    importResult = {
-      mode: 'replace',
-      schemaVersion: result.schemaVersion,
-      validAttempts: result.validAttempts,
-      importedAttempts: result.importedAttempts,
-      replacedAttempts: result.replacedAttempts,
-      duplicateAttempts: result.duplicateAttempts,
-      internalDuplicateAttempts: result.internalDuplicateAttempts,
-      skippedInvalidAttempts: importPlan.skippedInvalidCount,
-      warnings: result.warnings
-    };
-    importPlan = null;
-    importingPayload = null;
-    refreshData();
-  }
 </script>
 
 <div class="progress-container animate-fade-in">
@@ -230,37 +117,9 @@
 
   <RecommendedNextList {recommendations} onOpen={handleRecommendationRoute} />
 
-  <!-- Import Error Toast -->
-  {#if importError}
-    <div class="import-error-banner" role="alert">
-      <span>⚠️ {importError}</span>
-      <button class="btn-close" on:click={() => importError = null}>×</button>
-    </div>
-  {/if}
+  <ProgressExportActions attempts={allAttempts} />
 
-  {#if importResult}
-    <ProgressImportResultBanner
-      mode={importResult.mode}
-      schemaVersion={importResult.schemaVersion}
-      validAttempts={importResult.validAttempts}
-      importedAttempts={importResult.importedAttempts}
-      replacedAttempts={importResult.replacedAttempts}
-      duplicateAttempts={importResult.duplicateAttempts}
-      internalDuplicateAttempts={importResult.internalDuplicateAttempts}
-      skippedInvalidAttempts={importResult.skippedInvalidAttempts}
-      warnings={importResult.warnings}
-    />
-  {/if}
-
-  {#if importPlan}
-    <ProgressImportModal
-      plan={importPlan}
-      onMerge={handleConfirmMerge}
-      onReplace={() => handleConfirmReplace(false)}
-      onDangerousEmptyReplace={() => handleConfirmReplace(true)}
-      onCancel={clearPendingImport}
-    />
-  {/if}
+  <ProgressImportController onImported={refreshData} />
 
   <ProgressDiagnosticsCard {analytics} {allProblems} onStartProblem={handleStartProblem} />
 
@@ -282,9 +141,6 @@
     {showResetConfirm}
     onContinue={handleContinue}
     onDashboard={() => onNavigate('dashboard')}
-    onExportJson={handleExport}
-    onExportCsv={handleInstructorCsvExport}
-    onImportFile={handleFileImport}
     onTriggerReset={() => showResetConfirm = true}
     onConfirmReset={handleReset}
     onCancelReset={() => showResetConfirm = false}
@@ -298,33 +154,6 @@
     display: flex;
     flex-direction: column;
     gap: 2rem;
-  }
-
-  .import-error-banner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-    padding: 0.75rem 1.25rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-
-  .btn-close {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    color: #ef4444;
-    opacity: 0.7;
-    padding: 0 0.5rem;
-  }
-
-  .btn-close:hover {
-    opacity: 1;
   }
 
   .animate-fade-in {

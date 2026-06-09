@@ -236,6 +236,12 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Small shared UI primitives (`Button`, `Card`, and `StatusBanner`) were introduced and lightly applied to progress UI components.
 - Progress import results distinguish valid, added/replaced, existing duplicate, internal duplicate, and invalid attempts.
 
+### Stage 3J: UI System Consolidation and Interaction Safety
+- Shared UI primitives now include `Button`, `Card`, `StatusBanner`, `ActionRow`, `ConfirmPanel`, and `MetricCard`.
+- Progress import, export, reset, and statistic rendering were split into smaller components and reusable helpers.
+- Attempt review empty states are centralized in a reusable component with safe navigation actions.
+- Malformed legacy recommendation routes now fall back safely instead of opening blank problem IDs.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions
@@ -256,6 +262,12 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Guided telemetry is typed with discriminated snapshot unions.
 - Legacy localStorage data is normalized through `telemetryMigration.ts` before the app uses it.
 - Misconception definitions are centralized and should not be duplicated in UI components.
+
+### UI Primitives and Maintainability
+- Use `Button`, `Card`, `StatusBanner`, `ActionRow`, `ConfirmPanel`, and `MetricCard` for repeated action, panel, alert, confirmation, and dashboard statistic patterns.
+- Page components should orchestrate data loading, route adaptation, and section layout; domain math belongs in `src/lib/domain`; repeated UI patterns belong in `src/lib/ui` or focused `src/app/components` modules.
+- New pages over roughly 400 lines should be split before merging.
+- New educational feedback should define assumptions, units, sign conventions, and student-facing explanations.
 
 ### Active Application Routes
 - `#/` — Dashboard Home and Topic Selector
