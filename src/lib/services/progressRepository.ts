@@ -37,6 +37,7 @@ export interface ProgressRepository {
     importedAttempts: number;
     skippedAttempts: number;
     duplicateAttempts: number;
+    internalDuplicateAttempts: number;
     schemaVersion: number;
     validAttempts: number;
     replacedAttempts: number;

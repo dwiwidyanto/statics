@@ -9,7 +9,7 @@
   import { serializeProgressData } from '../../lib/services/progressExport';
   import { serializeAttemptsCsv } from '../../lib/services/progressCsvExport';
   import { createProgressImportPlan, type ProgressImportMode, type ProgressImportPlan } from '../../lib/services/progressImportPlan';
-  import { buildLearningRecommendations } from '../../lib/domain/progress/recommendations';
+  import { buildLearningRecommendations, type LearningRecommendationTarget } from '../../lib/domain/progress/recommendations';
   import { routeFromRecommendationTarget } from '../routing/attemptRoutes';
   import type { Route } from '../routing/router';
 
@@ -45,6 +45,7 @@
     importedAttempts: number;
     replacedAttempts: number;
     duplicateAttempts: number;
+    internalDuplicateAttempts: number;
     skippedInvalidAttempts: number;
     warnings: string[];
   } | null = null;
@@ -89,7 +90,7 @@
     }
   }
 
-  function handleRecommendationRoute(targetRoute?: string) {
+  function handleRecommendationRoute(targetRoute?: string | LearningRecommendationTarget) {
     const route = routeFromRecommendationTarget(targetRoute);
     if (route) navigateRoute(route);
   }
@@ -185,6 +186,7 @@
       importedAttempts: result.importedAttempts,
       replacedAttempts: result.replacedAttempts,
       duplicateAttempts: result.duplicateAttempts,
+      internalDuplicateAttempts: result.internalDuplicateAttempts,
       skippedInvalidAttempts: importPlan.skippedInvalidCount,
       warnings: result.warnings
     };
@@ -203,6 +205,7 @@
       importedAttempts: result.importedAttempts,
       replacedAttempts: result.replacedAttempts,
       duplicateAttempts: result.duplicateAttempts,
+      internalDuplicateAttempts: result.internalDuplicateAttempts,
       skippedInvalidAttempts: importPlan.skippedInvalidCount,
       warnings: result.warnings
     };
@@ -243,6 +246,7 @@
       importedAttempts={importResult.importedAttempts}
       replacedAttempts={importResult.replacedAttempts}
       duplicateAttempts={importResult.duplicateAttempts}
+      internalDuplicateAttempts={importResult.internalDuplicateAttempts}
       skippedInvalidAttempts={importResult.skippedInvalidAttempts}
       warnings={importResult.warnings}
     />

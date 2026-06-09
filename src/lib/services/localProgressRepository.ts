@@ -181,6 +181,7 @@ export class LocalProgressRepository implements ProgressRepository {
     importedAttempts: number;
     skippedAttempts: number;
     duplicateAttempts: number;
+    internalDuplicateAttempts: number;
     schemaVersion: number;
     validAttempts: number;
     replacedAttempts: number;
@@ -194,6 +195,7 @@ export class LocalProgressRepository implements ProgressRepository {
           importedAttempts: 0,
           skippedAttempts: plan.skippedInvalidCount,
           duplicateAttempts: 0,
+          internalDuplicateAttempts: plan.internalDuplicateCount,
           schemaVersion: plan.schemaVersion,
           validAttempts: 0,
           replacedAttempts: 0,
@@ -212,6 +214,7 @@ export class LocalProgressRepository implements ProgressRepository {
         importedAttempts: plan.validAttempts.length,
         skippedAttempts: plan.skippedInvalidCount + plan.internalDuplicateCount,
         duplicateAttempts: plan.internalDuplicateCount,
+        internalDuplicateAttempts: plan.internalDuplicateCount,
         schemaVersion: plan.schemaVersion,
         validAttempts: plan.validAttempts.length,
         replacedAttempts: plan.validAttempts.length,
@@ -243,6 +246,7 @@ export class LocalProgressRepository implements ProgressRepository {
       importedAttempts: added,
       skippedAttempts: duplicates + plan.skippedInvalidCount + plan.internalDuplicateCount,
       duplicateAttempts: duplicates,
+      internalDuplicateAttempts: plan.internalDuplicateCount,
       schemaVersion: plan.schemaVersion,
       validAttempts: plan.validAttempts.length,
       replacedAttempts: 0,

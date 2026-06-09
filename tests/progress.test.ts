@@ -262,6 +262,7 @@ describe('Local Progress Repository', () => {
 
     expect(result.importedAttempts).toBe(1);
     expect(result.duplicateAttempts).toBe(1);
+    expect(result.internalDuplicateAttempts).toBe(0);
     expect(result.skippedAttempts).toBe(1);
     expect(repo.getAttempts()).toHaveLength(2);
     expect(repo.getAttempts().map(a => a.id)).toEqual(['att-existing', 'att-new']);

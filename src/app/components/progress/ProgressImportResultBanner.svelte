@@ -1,5 +1,6 @@
 <script lang="ts">
   import { locale } from '../../../lib/utils/i18n';
+  import StatusBanner from '../../../lib/ui/StatusBanner.svelte';
   import type { ProgressImportMode } from '../../../lib/services/progressImportPlan';
 
   export let mode: ProgressImportMode;
@@ -8,15 +9,16 @@
   export let importedAttempts: number;
   export let replacedAttempts: number;
   export let duplicateAttempts: number;
+  export let internalDuplicateAttempts: number;
   export let skippedInvalidAttempts: number;
   export let warnings: string[] = [];
 </script>
 
-<div class="import-result-banner" role="status">
+<StatusBanner tone="success" role="status">
   <span>
     {$locale === 'id'
-      ? `Impor ${mode === 'merge' ? 'gabung' : 'ganti'} selesai: skema v${schemaVersion}, ${validAttempts} valid, ${importedAttempts} ditambahkan, ${replacedAttempts} diganti, ${duplicateAttempts} duplikat, ${skippedInvalidAttempts} tidak valid.`
-      : `${mode === 'merge' ? 'Merge' : 'Replace'} import complete: schema v${schemaVersion}, ${validAttempts} valid, ${importedAttempts} added, ${replacedAttempts} replaced, ${duplicateAttempts} duplicates, ${skippedInvalidAttempts} invalid.`}
+      ? `Impor ${mode === 'merge' ? 'gabung' : 'ganti'} selesai: skema v${schemaVersion}, ${validAttempts} valid, ${importedAttempts} ditambahkan, ${replacedAttempts} diganti, ${duplicateAttempts} duplikat lama, ${internalDuplicateAttempts} duplikat internal, ${skippedInvalidAttempts} tidak valid.`
+      : `${mode === 'merge' ? 'Merge' : 'Replace'} import complete: schema v${schemaVersion}, ${validAttempts} valid, ${importedAttempts} added, ${replacedAttempts} replaced, ${duplicateAttempts} existing duplicates, ${internalDuplicateAttempts} internal duplicates, ${skippedInvalidAttempts} invalid.`}
   </span>
   {#if warnings.length > 0}
     <ul>
@@ -25,20 +27,10 @@
       {/each}
     </ul>
   {/if}
-</div>
+</StatusBanner>
 
 <style>
-  .import-result-banner {
-    background-color: rgba(16, 185, 129, 0.08);
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    color: var(--text-primary);
-    padding: 0.75rem 1.25rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-
-  .import-result-banner ul {
+  ul {
     margin: 0.5rem 0 0 1rem;
     padding: 0;
     color: var(--text-secondary);

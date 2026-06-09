@@ -14,12 +14,34 @@ export interface LearningRecommendation {
     id: string;
   };
   targetRoute?: string;
+  target?: LearningRecommendationTarget;
   relatedProblemId?: string;
   relatedMisconception?: MisconceptionCode;
 }
 
-function problemRoute(problem: AnyProblem): string {
-  return problem.topic === 'trusses' ? `trusses:${problem.id}` : `guided/${problem.id}`;
+export type LearningRecommendationTarget =
+  | { kind: 'guided_beam'; problemId: string }
+  | { kind: 'practice'; problemId: string }
+  | { kind: 'truss_practice'; problemId: string }
+  | { kind: 'guided_truss'; problemId: string }
+  | { kind: 'progress' }
+  | { kind: 'attempt_review'; attemptId: string };
+
+function problemTarget(problem: AnyProblem, guided = true): LearningRecommendationTarget {
+  if (problem.topic === 'trusses') {
+    return guided ? { kind: 'guided_truss', problemId: problem.id } : { kind: 'truss_practice', problemId: problem.id };
+  }
+  if (problem.topic === 'beam-internal-forces') return { kind: 'guided_beam', problemId: problem.id };
+  return { kind: 'practice', problemId: problem.id };
+}
+
+function legacyRoute(target: LearningRecommendationTarget): string {
+  if (target.kind === 'guided_truss') return `trusses:${target.problemId}`;
+  if (target.kind === 'truss_practice') return `trusses:${target.problemId}`;
+  if (target.kind === 'guided_beam') return `guided/${target.problemId}`;
+  if (target.kind === 'practice') return `practice/${target.problemId}`;
+  if (target.kind === 'attempt_review') return `progress/attempt/${target.attemptId}`;
+  return 'progress';
 }
 
 const difficultyRank = { easy: 0, medium: 1, hard: 2 } as const;
@@ -61,6 +83,7 @@ export function buildLearningRecommendations(args: {
 
   if (attempts.length === 0) {
     const firstProblem = args.allProblems[0];
+    const target = firstProblem ? problemTarget(firstProblem) : undefined;
     return [{
       priority: 'medium',
       type: 'continue_topic',
@@ -69,7 +92,8 @@ export function buildLearningRecommendations(args: {
         en: 'Begin with a guided attempt so your progress and misconceptions can be tracked locally.',
         id: 'Mulai dengan percobaan terpandu agar progres dan miskonsepsi dapat dilacak secara lokal.'
       },
-      targetRoute: firstProblem ? problemRoute(firstProblem) : undefined,
+      target,
+      targetRoute: target ? legacyRoute(target) : undefined,
       relatedProblemId: firstProblem?.id
     }];
   }
@@ -98,6 +122,9 @@ export function buildLearningRecommendations(args: {
   const retryAttempt = attempts.find(attempt => attempt.guidedTelemetry && attempt.score < 0.8);
   if (retryAttempt) {
     const problem = args.allProblems.find(p => p.id === retryAttempt.problemId);
+    const target = problem
+      ? problemTarget(problem, retryAttempt.guidedTelemetry !== undefined)
+      : undefined;
     recommendations.push({
       priority: 'high',
       type: 'retry_problem',
@@ -106,7 +133,8 @@ export function buildLearningRecommendations(args: {
         en: 'A recent guided attempt was below readiness level. Try it again after reviewing the feedback.',
         id: 'Percobaan terpandu terakhir masih di bawah tingkat siap. Coba lagi setelah meninjau umpan balik.'
       },
-      targetRoute: problem ? problemRoute(problem) : undefined,
+      target,
+      targetRoute: target ? legacyRoute(target) : undefined,
       relatedProblemId: retryAttempt.problemId
     });
   }
@@ -114,6 +142,7 @@ export function buildLearningRecommendations(args: {
   const completedProblemIds = new Set(attempts.filter(a => a.completed || a.score >= 0.8).map(a => a.problemId));
   const nextProblem = findNextProblem(args.allProblems, completedProblemIds, preferredSkillTags);
   if (nextProblem) {
+    const target = problemTarget(nextProblem);
     recommendations.push({
       priority: 'medium',
       type: 'continue_topic',
@@ -122,7 +151,8 @@ export function buildLearningRecommendations(args: {
         en: 'Keep building breadth by completing the next unfinished local problem.',
         id: 'Bangun cakupan belajar dengan menyelesaikan soal lokal berikutnya yang belum selesai.'
       },
-      targetRoute: problemRoute(nextProblem),
+      target,
+      targetRoute: legacyRoute(target),
       relatedProblemId: nextProblem.id
     });
   }

@@ -229,6 +229,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - `ProgressPage.svelte` was reduced to a page coordinator with import modal, result banner, diagnostics, recommendations, and actions extracted to components.
 - Recent attempt and recommendation navigation decisions are covered by pure route helpers and tests.
 
+### Stage 3I: Learning Navigation and Review Safety
+- Learning recommendations now carry typed targets for guided beams, guided trusses, truss practice, sandbox practice, progress, and attempt review.
+- Retry recommendations preserve guided truss context, while truss continuation recommendations prefer the guided method-of-joints workflow.
+- Attempt review is topic-safe: non-truss guided attempts show a summary-only state, missing truss problems show a clear error, and the page no longer falls back to the first truss problem.
+- Small shared UI primitives (`Button`, `Card`, and `StatusBanner`) were introduced and lightly applied to progress UI components.
+- Progress import results distinguish valid, added/replaced, existing duplicate, internal duplicate, and invalid attempts.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions
@@ -240,6 +247,7 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 ### Local Progress Portability
 - Progress can be exported from `#/progress` as a versioned JSON file containing `schemaVersion`, `exportedAt`, `appName`, `appVersion`, `generatedBy`, `attemptCount`, and `attempts`.
 - Progress can be imported back into the same browser or another browser using merge or replace mode.
+- Import results separate valid attempts, added/replaced attempts, existing duplicates, duplicate IDs inside the imported file, and invalid skipped rows.
 - Replace mode can erase local progress; imports with zero valid attempts are blocked unless the user explicitly confirms the dangerous empty replace action.
 - Instructor CSV export is available from `#/progress` and includes attempt id, problem id, topic, score, completion, timestamp, misconceptions, weakest skill, and hint usage.
 - All progress data remains browser-local in `localStorage`; no backend or authentication is used yet.

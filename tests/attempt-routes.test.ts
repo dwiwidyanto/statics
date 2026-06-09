@@ -40,5 +40,9 @@ describe('attempt route decisions', () => {
   it('converts recommendation truss targets to normal or guided routes intentionally', () => {
     expect(routeFromRecommendationTarget('trusses:truss-1')).toEqual({ page: 'trusses', problemId: 'truss-1' });
     expect(routeFromRecommendationTarget('trusses:truss-1', true)).toEqual({ page: 'trusses-guided', problemId: 'truss-1' });
+    expect(routeFromRecommendationTarget({ kind: 'guided_truss', problemId: 'truss-1' })).toEqual({ page: 'trusses-guided', problemId: 'truss-1' });
+    expect(routeFromRecommendationTarget({ kind: 'truss_practice', problemId: 'truss-1' })).toEqual({ page: 'trusses', problemId: 'truss-1' });
+    expect(routeFromRecommendationTarget({ kind: 'guided_beam', problemId: 'beam-1' })).toEqual({ page: 'guided', problemId: 'beam-1' });
+    expect(routeFromRecommendationTarget({ kind: 'practice', problemId: 'starter-1' })).toEqual({ page: 'practice', problemId: 'starter-1' });
   });
 });

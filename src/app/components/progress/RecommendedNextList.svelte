@@ -1,43 +1,40 @@
 <script lang="ts">
   import { locale } from '../../../lib/utils/i18n';
-  import type { LearningRecommendation } from '../../../lib/domain/progress/recommendations';
+  import type { LearningRecommendation, LearningRecommendationTarget } from '../../../lib/domain/progress/recommendations';
+  import Card from '../../../lib/ui/Card.svelte';
+  import Button from '../../../lib/ui/Button.svelte';
 
   export let recommendations: LearningRecommendation[];
-  export let onOpen: (targetRoute?: string) => void;
+  export let onOpen: (targetRoute?: string | LearningRecommendationTarget) => void;
 </script>
 
 {#if recommendations.length > 0}
-  <section class="recommended-next card">
-    <div class="section-heading-row">
-      <h2>{$locale === 'id' ? 'Rekomendasi Berikutnya' : 'Recommended Next'}</h2>
+  <Card>
+    <div class="recommended-next">
+      <div class="section-heading-row">
+        <h2>{$locale === 'id' ? 'Rekomendasi Berikutnya' : 'Recommended Next'}</h2>
+      </div>
+      <div class="recommendation-list">
+        {#each recommendations as recommendation}
+          <article class="recommendation-item">
+            <div>
+              <span class="recommendation-priority {recommendation.priority}">{recommendation.priority}</span>
+              <h3>{$locale === 'id' ? recommendation.title.id : recommendation.title.en}</h3>
+              <p>{$locale === 'id' ? recommendation.description.id : recommendation.description.en}</p>
+            </div>
+            {#if recommendation.target || recommendation.targetRoute}
+              <Button variant="secondary" on:click={() => onOpen(recommendation.target ?? recommendation.targetRoute)}>
+                {$locale === 'id' ? 'Buka' : 'Open'}
+              </Button>
+            {/if}
+          </article>
+        {/each}
+      </div>
     </div>
-    <div class="recommendation-list">
-      {#each recommendations as recommendation}
-        <article class="recommendation-item">
-          <div>
-            <span class="recommendation-priority {recommendation.priority}">{recommendation.priority}</span>
-            <h3>{$locale === 'id' ? recommendation.title.id : recommendation.title.en}</h3>
-            <p>{$locale === 'id' ? recommendation.description.id : recommendation.description.en}</p>
-          </div>
-          {#if recommendation.targetRoute}
-            <button class="btn btn-secondary" on:click={() => onOpen(recommendation.targetRoute)}>
-              {$locale === 'id' ? 'Buka' : 'Open'}
-            </button>
-          {/if}
-        </article>
-      {/each}
-    </div>
-  </section>
+  </Card>
 {/if}
 
 <style>
-  .card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.75rem;
-  }
-
   .recommended-next h2 {
     font-size: 1.15rem;
     margin: 0;
@@ -89,15 +86,4 @@
   .recommendation-priority.high { color: #dc2626; }
   .recommendation-priority.medium { color: #d97706; }
   .recommendation-priority.low { color: #059669; }
-
-  .btn {
-    font-size: 0.85rem;
-    font-weight: 700;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    border: none;
-  }
-
-  .btn-secondary { background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); }
 </style>

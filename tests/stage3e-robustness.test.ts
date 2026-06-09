@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizeProgressData } from '../src/lib/domain/progress/telemetryMigration';
 import { reconstructTrussReplayState } from '../src/lib/domain/progress/attemptReplay';
 import { buildLearningRecommendations } from '../src/lib/domain/progress/recommendations';
+import { routeFromRecommendationTarget } from '../src/app/routing/attemptRoutes';
 import { trussProblems } from '../src/content/problems/truss-problems';
 import { solveTruss } from '../src/lib/domain/truss/solver';
 import type { Attempt, GuidedAttemptTelemetry } from '../src/lib/domain/progress/types';
@@ -100,6 +101,9 @@ describe('Stage 3E robustness helpers', () => {
     const lowRecommendations = buildLearningRecommendations({ attempts: [lowAttempt], allProblems: problems });
     expect(lowRecommendations.some(r => r.type === 'review_misconception' && r.relatedMisconception === 'sign_reversed')).toBe(true);
     expect(lowRecommendations.some(r => r.type === 'retry_problem' && r.relatedProblemId === problems[0].id)).toBe(true);
+    const retryRecommendation = lowRecommendations.find(r => r.type === 'retry_problem' && r.relatedProblemId === problems[0].id);
+    expect(retryRecommendation?.target).toEqual({ kind: 'guided_truss', problemId: problems[0].id });
+    expect(routeFromRecommendationTarget(retryRecommendation?.target)).toEqual({ page: 'trusses-guided', problemId: problems[0].id });
 
     const strongAttempts = problems.map((problem, index): Attempt => ({
       id: `strong-${index}`,

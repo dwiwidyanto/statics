@@ -5,6 +5,7 @@
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
   import { getFirstAttemptAccuracy, getHintUsageSummary } from '../../lib/domain/progress/guidedTelemetry';
   import { reconstructTrussReplayState, emptyTrussReplayState } from '../../lib/domain/progress/attemptReplay';
+  import { buildAttemptReviewModel } from '../../lib/domain/progress/attemptReviewModel';
   import type { Attempt } from '../../lib/domain/progress/types';
 
   // Import Sub-components
@@ -22,13 +23,16 @@
   const repo = getProgressRepository();
 
   // Load active attempt
-  $: attempt = repo.getAttempts().find(a => a.id === attemptId) as Attempt | undefined;
-  $: telemetry = attempt?.guidedTelemetry;
+  $: reviewModel = buildAttemptReviewModel({ attemptId, attempts: repo.getAttempts(), trussProblems });
+  $: attempt = reviewModel.mode === 'not_found' ? undefined : reviewModel.attempt as Attempt | undefined;
+  $: telemetry = reviewModel.mode === 'truss_replay' || reviewModel.mode === 'missing_problem' || reviewModel.mode === 'summary_only'
+    ? reviewModel.telemetry
+    : undefined;
 
   // Resolve the active problem and solver reference
-  $: activeProblem = trussProblems.find(p => p.id === attempt?.problemId) || trussProblems[0];
-  $: solverResult = solveTruss(activeProblem);
-  $: referenceZeroForceIds = solverResult.zeroForceMembers;
+  $: activeProblem = reviewModel.mode === 'truss_replay' ? reviewModel.problem : null;
+  $: solverResult = activeProblem ? solveTruss(activeProblem) : null;
+  $: referenceZeroForceIds = solverResult?.zeroForceMembers ?? [];
 
   // Timeline scrubbing state
   let selectedAttemptIdx = 0;
@@ -38,7 +42,7 @@
     selectedAttemptIdx = telemetry.stepAttempts.length - 1;
   }
 
-  $: reconstructedState = telemetry
+  $: reconstructedState = telemetry && activeProblem && solverResult
     ? reconstructTrussReplayState({ telemetry, selectedAttemptIdx, problem: activeProblem, solverResult })
     : emptyTrussReplayState();
 
@@ -48,7 +52,7 @@
 </script>
 
 <div class="review-page-container animate-fade-in">
-  {#if attempt}
+  {#if attempt && activeProblem}
     <AttemptReviewHeader
       {activeProblem}
       {attempt}
@@ -61,7 +65,30 @@
     <div class="empty-state">
       <p>{$locale === 'id' ? 'Percobaan tidak ditemukan.' : 'Attempt not found.'}</p>
     </div>
-  {:else if !telemetry}
+  {:else if reviewModel.mode === 'missing_problem'}
+    <div class="empty-state">
+      <p>
+        {$locale === 'id'
+          ? `Model rangka batang untuk percobaan ini tidak ditemukan: ${reviewModel.problemId}.`
+          : `The truss model for this attempt could not be found: ${reviewModel.problemId}.`}
+      </p>
+    </div>
+  {:else if reviewModel.mode === 'summary_only'}
+    <div class="empty-state">
+      <p>
+        {#if reviewModel.reason === 'unsupported_topic'}
+          {$locale === 'id'
+            ? 'Ringkasan tinjauan tersedia, tetapi replay visual untuk topik ini belum didukung.'
+            : 'Review summary is available, but visual replay for this topic is not supported yet.'}
+        {:else}
+          {$locale === 'id'
+            ? 'Data replay visual tidak tersedia untuk percobaan ini.'
+            : 'Visual replay data is not available for this attempt.'}
+        {/if}
+      </p>
+      <p>{$locale === 'id' ? `Skor tersimpan: ${Math.round(attempt.score * 100)}%` : `Stored score: ${Math.round(attempt.score * 100)}%`}</p>
+    </div>
+  {:else if !telemetry || !activeProblem || !solverResult}
     <div class="empty-state">
       <p>{$locale === 'id' ? 'Data tinjauan langkah demi langkah tidak tersedia untuk percobaan ini.' : 'Step-by-step review telemetry is not available for this attempt.'}</p>
     </div>
@@ -98,7 +125,7 @@
             <StepAttemptDetails
               selectedAttempt={telemetry.stepAttempts[selectedAttemptIdx]}
               {activeProblem}
-              {solverResult}
+              solverResult={solverResult}
               {referenceZeroForceIds}
             />
           {/key}
