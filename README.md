@@ -242,6 +242,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Attempt review empty states are centralized in a reusable component with safe navigation actions.
 - Malformed legacy recommendation routes now fall back safely instead of opening blank problem IDs.
 
+### Stage 3K: Workspace Maintainability and Learning UI Hardening
+- Guided beam workspace rendering was split into focused components under `src/app/components/guided-beam/` for diagram rendering, step instruction panels, and attempt navigation actions.
+- Practice sandbox orchestration now uses focused components under `src/app/components/practice/` for preset selection and solver/validation panels.
+- Practice and guided beam route-prop problem selection is centralized in `src/app/routing/problemSelection.ts`, so mounted workspaces stay aligned with direct hash changes.
+- Unknown practice route IDs no longer silently load a different preset; missing guided beam IDs continue to show the not-found state.
+- Progress “continue” and analytics start actions now use a pure route helper that prefers guided truss workflow for truss starts while preserving explicit normal truss practice targets.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions
@@ -268,6 +275,7 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Page components should orchestrate data loading, route adaptation, and section layout; domain math belongs in `src/lib/domain`; repeated UI patterns belong in `src/lib/ui` or focused `src/app/components` modules.
 - New pages over roughly 400 lines should be split before merging.
 - New educational feedback should define assumptions, units, sign conventions, and student-facing explanations.
+- Workspace pages should keep route-prop synchronization explicit when the router can keep a component mounted while changing problem IDs.
 
 ### Active Application Routes
 - `#/` — Dashboard Home and Topic Selector

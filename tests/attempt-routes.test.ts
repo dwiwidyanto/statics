@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAttemptNavigationTarget, routeFromRecommendationTarget } from '../src/app/routing/attemptRoutes';
+import { getAttemptNavigationTarget, routeForProblemStart, routeFromRecommendationTarget } from '../src/app/routing/attemptRoutes';
 import type { Attempt } from '../src/lib/domain/progress/types';
 import type { AnyProblem } from '../src/lib/services/progressRepository';
 
@@ -53,5 +53,12 @@ describe('attempt route decisions', () => {
     expect(routeFromRecommendationTarget('unknown-route')).toEqual({ page: 'dashboard' });
     expect(routeFromRecommendationTarget({ kind: 'guided_truss', problemId: '' })).toEqual({ page: 'dashboard' });
     expect(routeFromRecommendationTarget({ kind: 'attempt_review', attemptId: '' })).toEqual({ page: 'dashboard' });
+  });
+
+  it('prefers guided truss starts unless normal practice is explicit', () => {
+    expect(routeForProblemStart(allProblems[0])).toEqual({ page: 'trusses-guided', problemId: 'truss-1' });
+    expect(routeForProblemStart(allProblems[0], false)).toEqual({ page: 'trusses', problemId: 'truss-1' });
+    expect(routeForProblemStart(allProblems[1])).toEqual({ page: 'guided', problemId: 'beam-1' });
+    expect(routeForProblemStart(allProblems[2])).toEqual({ page: 'practice', problemId: 'starter-1' });
   });
 });

@@ -70,7 +70,10 @@ describe('Hash-based Routing System', () => {
   it('round-trips supported direct hash routes', () => {
     const hashes = [
       '#/',
+      '#/practice',
+      '#/practice/prob-simply-supported-beam',
       '#/guided/beam-simply-supported-midpoint',
+      '#/trusses',
       '#/trusses/truss-simple-triangle',
       '#/trusses/truss-simple-triangle/guided',
       '#/progress',

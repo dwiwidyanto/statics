@@ -7,7 +7,7 @@
   import type { AnyProblem } from '../../lib/services/progressRepository';
   import { computeLearningAnalytics } from '../../lib/domain/progress/analytics';
   import { buildLearningRecommendations, type LearningRecommendationTarget } from '../../lib/domain/progress/recommendations';
-  import { routeFromRecommendationTarget } from '../routing/attemptRoutes';
+  import { routeForProblemStart, routeFromRecommendationTarget } from '../routing/attemptRoutes';
   import type { Route } from '../routing/router';
 
   // Import Sub-components
@@ -66,11 +66,7 @@
   }
 
   function handleStartProblem(problem: AnyProblem) {
-    if (problem.topic === 'trusses') {
-      onNavigate('trusses', { problemId: problem.id });
-    } else {
-      onNavigate(`guided/${problem.id}`);
-    }
+    navigateRoute(routeForProblemStart(problem));
   }
 
   function handleRecommendationRoute(targetRoute?: string | LearningRecommendationTarget) {

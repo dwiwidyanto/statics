@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import type { RigidBody, Support, Load, ProblemModel } from '../../lib/domain/models/types';
   import { starterProblems } from '../../content/problems/statics-problems';
   import { checkFbdModel } from '../../lib/domain/validation/checker';
   import { solveEquilibrium } from '../../lib/domain/solvers/equilibrium';
   import FbdCanvas from '../../lib/ui/FbdCanvas.svelte';
-  import FeedbackPanel from '../../lib/ui/FeedbackPanel.svelte';
-  import EquationsView from '../../lib/ui/EquationsView.svelte';
   import { locale, translations } from '../../lib/utils/i18n';
+  import { selectPracticeProblemFromRoute } from '../routing/problemSelection';
+  import PracticePresetSelector from '../components/practice/PracticePresetSelector.svelte';
+  import PracticeSolverPanel from '../components/practice/PracticeSolverPanel.svelte';
 
   export let initialProblemId: string | null = null;
   export let onNavigate: (page: string, params?: any) => void;
@@ -68,19 +68,26 @@
   $: validation = checkFbdModel(body, supports, activeLoads, $locale);
   $: solverResult = solveEquilibrium(body, supports, activeLoads);
 
-  // 5. Lifecycle hook: load initial problem if requested
-  onMount(() => {
-    if (initialProblemId) {
-      loadProblemById(initialProblemId);
-      problemDropdownValue = initialProblemId;
-    } else {
-      loadDefaultPreset();
-    }
-  });
+  let lastSyncedRouteProblemId: string | null | undefined = undefined;
 
-  function loadDefaultPreset() {
-    loadProblemById('prob-simply-supported-beam');
-    problemDropdownValue = 'prob-simply-supported-beam';
+  // 5. Route prop synchronization: keep mounted workspace aligned with hash changes.
+  $: if (initialProblemId !== lastSyncedRouteProblemId) {
+    lastSyncedRouteProblemId = initialProblemId;
+    const selection = selectPracticeProblemFromRoute(initialProblemId, starterProblems);
+    if (selection.kind === 'default') {
+      loadProblemById(selection.problemId);
+      problemDropdownValue = selection.problemId;
+    } else if (selection.kind === 'route') {
+      loadProblemById(selection.problemId);
+      problemDropdownValue = selection.problemId;
+    } else {
+      supports = [];
+      loads = [];
+      selectedItemId = null;
+      selectedItemType = null;
+      inputMode = 'none';
+      problemDropdownValue = 'custom';
+    }
   }
 
   function loadProblemById(id: string) {
@@ -270,34 +277,13 @@
 </script>
 
 <div class="practice-container">
-  <div class="practice-toolbar">
-    <div class="toolbar-left">
-      <!-- svelte-ignore a11y-invalid-attribute -->
-      <a href="#" class="back-link" on:click|preventDefault={() => onNavigate('dashboard')}>
-        ← {translations[$locale].dashboard}
-      </a>
-      <h2>{translations[$locale].interactiveSandbox}</h2>
-    </div>
-    
-    <div class="toolbar-right">
-      <div class="problem-loader">
-        <label for="problem-preset">{translations[$locale].presetProblem}</label>
-        <select 
-          id="problem-preset" 
-          class="form-control select-preset"
-          value={problemDropdownValue}
-          on:change={handleProblemChange}
-        >
-          <option value="custom">{translations[$locale].customSandbox}</option>
-          {#each starterProblems as prob}
-            <option value={prob.id}>{$locale === 'id' ? prob.titleId || prob.title : prob.title}</option>
-          {/each}
-        </select>
-      </div>
-
-      <button class="btn btn-secondary" on:click={clearAll}>{translations[$locale].resetDiagram}</button>
-    </div>
-  </div>
+  <PracticePresetSelector
+    problems={starterProblems}
+    {problemDropdownValue}
+    onProblemChange={handleProblemChange}
+    onReset={clearAll}
+    onDashboard={() => onNavigate('dashboard')}
+  />
 
   <!-- Layout Main Content Grid -->
   <div class="sandbox-layout">
@@ -633,26 +619,14 @@
       {/if}
     </div>
 
-    <!-- Right Column: Diagnostics and Calculations -->
-    <div class="calculations-panel">
-      <!-- Diagnostics Card -->
-      <div class="card panel-card">
-        <FeedbackPanel
-          feedbacks={validation.feedbacks}
-          determinacy={validation.determinacy}
-          stability={validation.stability}
-        />
-      </div>
-
-      <!-- Equations Solver Card -->
-      <div class="card panel-card">
-        <EquationsView
-          {solverResult}
-          {supports}
-          {showReactions}
-        />
-      </div>
-    </div>
+    <PracticeSolverPanel
+      feedbacks={validation.feedbacks}
+      determinacy={validation.determinacy}
+      stability={validation.stability}
+      {solverResult}
+      {supports}
+      {showReactions}
+    />
   </div>
 </div>
 
@@ -664,62 +638,6 @@
     max-width: 1300px;
     margin: 0 auto;
     animation: fadeIn 0.4s ease-out;
-  }
-
-  .practice-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    background-color: var(--bg-secondary);
-    padding: 1rem 1.5rem;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-  }
-
-  .toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .toolbar-left h2 {
-    font-size: 1.25rem;
-    margin-bottom: 0;
-  }
-
-  .back-link {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-  .back-link:hover {
-    color: var(--color-primary);
-  }
-
-  .toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .problem-loader {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .problem-loader label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-
-  .select-preset {
-    width: 250px;
   }
 
   .sandbox-layout {
@@ -886,17 +804,6 @@
 
   .hints-card li {
     margin-bottom: 0.35rem;
-  }
-
-  .calculations-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .panel-card {
-    padding: 1.25rem;
-    margin-bottom: 0;
   }
 
   @keyframes fadeIn {

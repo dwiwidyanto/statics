@@ -11,6 +11,18 @@ export interface LegacyNavigationTarget {
   };
 }
 
+export function routeForProblemStart(problem: AnyProblem, preferGuidedTruss = true): Route {
+  if (problem.topic === 'trusses') {
+    return preferGuidedTruss
+      ? { page: 'trusses-guided', problemId: problem.id }
+      : { page: 'trusses', problemId: problem.id };
+  }
+  if (problem.topic === 'beam-internal-forces') {
+    return { page: 'guided', problemId: problem.id };
+  }
+  return { page: 'practice', problemId: problem.id };
+}
+
 export function getAttemptNavigationTarget(attempt: Attempt, allProblems: AnyProblem[]): LegacyNavigationTarget {
   const route = getRouteForAttempt(attempt.problemId, allProblems);
   const hasGuidedMarkers = attempt.guidedTelemetry !== undefined || attempt.misconceptions !== undefined || attempt.skillBreakdown !== undefined;
