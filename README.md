@@ -249,6 +249,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Unknown practice route IDs no longer silently load a different preset; missing guided beam IDs continue to show the not-found state.
 - Progress “continue” and analytics start actions now use a pure route helper that prefers guided truss workflow for truss starts while preserving explicit normal truss practice targets.
 
+### Stage 3L: Route Safety and Canvas/Sandbox Modularization
+- Truss practice and guided truss routes now use typed selection helpers, so invalid problem IDs show a clear not-found state instead of falling back to another truss.
+- Normal truss practice without an ID still defaults to the first truss problem; guided truss routes never default when the ID is missing or invalid.
+- Practice sandbox forms were further split with focused body settings and support-entry components while preserving FBD editing behavior.
+- FBD canvas coordinate and scale math moved into pure `fbdViewport.ts` helpers with regression tests.
+- Quality gates remain unchanged: test, check, build, production audit, and hygiene scans.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions

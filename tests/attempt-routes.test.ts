@@ -52,6 +52,9 @@ describe('attempt route decisions', () => {
     expect(routeFromRecommendationTarget('guided/')).toEqual({ page: 'dashboard' });
     expect(routeFromRecommendationTarget('unknown-route')).toEqual({ page: 'dashboard' });
     expect(routeFromRecommendationTarget({ kind: 'guided_truss', problemId: '' })).toEqual({ page: 'dashboard' });
+    expect(routeFromRecommendationTarget({ kind: 'truss_practice', problemId: '' })).toEqual({ page: 'dashboard' });
+    expect(routeFromRecommendationTarget({ kind: 'guided_beam', problemId: '' })).toEqual({ page: 'dashboard' });
+    expect(routeFromRecommendationTarget({ kind: 'practice', problemId: '' })).toEqual({ page: 'dashboard' });
     expect(routeFromRecommendationTarget({ kind: 'attempt_review', attemptId: '' })).toEqual({ page: 'dashboard' });
   });
 

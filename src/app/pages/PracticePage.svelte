@@ -6,8 +6,10 @@
   import FbdCanvas from '../../lib/ui/FbdCanvas.svelte';
   import { locale, translations } from '../../lib/utils/i18n';
   import { selectPracticeProblemFromRoute } from '../routing/problemSelection';
+  import PracticeBodySettingsForm from '../components/practice/PracticeBodySettingsForm.svelte';
   import PracticePresetSelector from '../components/practice/PracticePresetSelector.svelte';
   import PracticeSolverPanel from '../components/practice/PracticeSolverPanel.svelte';
+  import PracticeSupportForm from '../components/practice/PracticeSupportForm.svelte';
 
   export let initialProblemId: string | null = null;
   export let onNavigate: (page: string, params?: any) => void;
@@ -164,6 +166,10 @@
 
   function openBodySettings() {
     inputMode = 'body';
+  }
+
+  function handleBodyChange(nextBody: RigidBody) {
+    body = nextBody;
   }
 
   function saveNewSupport() {
@@ -379,62 +385,22 @@
       {#if inputMode !== 'none' || selectedItemId}
         <div class="inspector-card animate-fade-in">
           {#if inputMode === 'body'}
-            <h3>{translations[$locale].editBodyDimensions}</h3>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="body-type">{translations[$locale].bodyType}</label>
-                <select id="body-type" class="form-control" bind:value={body.type}>
-                  <option value="beam">{translations[$locale].beamLinear}</option>
-                  <option value="block">{translations[$locale].blockPlanar}</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="body-w">{translations[$locale].widthLength}</label>
-                <input id="body-w" type="number" min="1" max="15" step="0.5" class="form-control" bind:value={body.width} />
-              </div>
-              <div class="form-group">
-                <label for="body-h">{translations[$locale].height}</label>
-                <input id="body-h" type="number" min="0.1" max="5" step="0.1" class="form-control" bind:value={body.height} />
-              </div>
-              <div class="form-group">
-                <label for="body-wt">{translations[$locale].selfWeight}</label>
-                <input id="body-wt" type="number" min="0" max="1000" step="10" class="form-control" bind:value={body.weight} />
-              </div>
-            </div>
-            <div class="form-actions">
-              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>{translations[$locale].close}</button>
-            </div>
+            <PracticeBodySettingsForm
+              {body}
+              onBodyChange={handleBodyChange}
+              onClose={() => inputMode = 'none'}
+            />
 
           {:else if inputMode === 'add_support'}
-            <h3>{translations[$locale].addSupportConstraint}</h3>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="supp-type">{translations[$locale].supportType}</label>
-                <select id="supp-type" class="form-control" bind:value={suppType}>
-                  <option value="pin">{translations[$locale].pinSupport}</option>
-                  <option value="roller">{translations[$locale].rollerSupport}</option>
-                  <option value="fixed">{translations[$locale].fixedJoint}</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="supp-x">{translations[$locale].positionX} (0 to {body.width}m)</label>
-                <input id="supp-x" type="number" min="0" max={body.width} step="0.1" class="form-control" bind:value={suppX} />
-              </div>
-              <div class="form-group">
-                <label for="supp-lbl">{translations[$locale].labelPrefix}</label>
-                <input id="supp-lbl" type="text" maxlength="2" class="form-control" bind:value={suppLabel} />
-              </div>
-              {#if suppType === 'roller'}
-                <div class="form-group">
-                  <label for="supp-ang">{translations[$locale].rollerIncline}</label>
-                  <input id="supp-ang" type="number" min="0" max="360" step="15" class="form-control" bind:value={suppAngle} />
-                </div>
-              {/if}
-            </div>
-            <div class="form-actions">
-              <button class="btn btn-secondary" on:click={() => inputMode = 'none'}>{translations[$locale].cancel}</button>
-              <button class="btn btn-primary" on:click={saveNewSupport}>{translations[$locale].saveSupport}</button>
-            </div>
+            <PracticeSupportForm
+              bodyWidth={body.width}
+              bind:suppType
+              bind:suppX
+              bind:suppAngle
+              bind:suppLabel
+              onCancel={() => inputMode = 'none'}
+              onSave={saveNewSupport}
+            />
 
           {:else if inputMode === 'add_load'}
             <h3>{translations[$locale].addExternalLoad}</h3>

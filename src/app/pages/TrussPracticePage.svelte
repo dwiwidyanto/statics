@@ -12,6 +12,8 @@
   import type { TrussScoreResult } from '../../lib/domain/truss/scoring';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
   import type { Attempt } from '../../lib/domain/progress/types';
+  import { selectTrussPracticeProblemFromRoute } from '../routing/problemSelection';
+  import TrussRouteNotFound from '../components/truss/TrussRouteNotFound.svelte';
 
   export let problemId: string | null = null;
   export let onNavigate: (page: string, params?: any) => void;
@@ -22,21 +24,19 @@
   // Selected problem state
   let selectedProblemId = trussProblems[0].id;
 
-  // Sync route parameter changes reactively and validate
-  $: {
-    if (problemId) {
-      const exists = trussProblems.some(p => p.id === problemId);
-      selectedProblemId = exists ? problemId : trussProblems[0].id;
-    } else {
-      selectedProblemId = trussProblems[0].id;
-    }
-  }
+  // Sync route parameter changes reactively and validate without falling back on missing IDs.
+  $: problemSelection = selectTrussPracticeProblemFromRoute(problemId, trussProblems);
+  $: selectedProblemId = problemSelection.kind === 'default' || problemSelection.kind === 'route'
+    ? problemSelection.problemId
+    : problemId ?? '';
 
   // React to selected id
-  $: activeProblem = trussProblems.find(p => p.id === selectedProblemId) || trussProblems[0];
+  $: activeProblem = problemSelection.kind === 'default' || problemSelection.kind === 'route'
+    ? trussProblems.find(p => p.id === selectedProblemId) ?? null
+    : null;
 
   // Solve problem
-  $: solverResult = solveTruss(activeProblem);
+  $: solverResult = activeProblem ? solveTruss(activeProblem) : null;
 
   // Practice state
   let checkedResult: TrussScoreResult | null = null;
@@ -63,7 +63,7 @@
     reactions: Record<string, number | null>;
     memberForces: Record<string, number | null>;
   }) {
-    if (!activeProblem || !solverResult.isSolved) return;
+    if (!activeProblem || !solverResult?.isSolved) return;
 
     currentAnswers = answers;
 
@@ -130,6 +130,9 @@
     </div>
   {/if}
 
+  {#if !activeProblem || !solverResult}
+    <TrussRouteNotFound problemId={problemId ?? ''} {onNavigate} />
+  {:else}
   <header class="page-header">
     <div class="header-btn-row">
       <button class="btn btn-secondary back-btn" on:click={() => onNavigate('dashboard')}>
@@ -224,6 +227,7 @@
       {/if}
     </div>
   </div>
+  {/if}
 </div>
 
 <style>

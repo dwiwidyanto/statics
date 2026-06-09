@@ -45,6 +45,14 @@ describe('Hash-based Routing System', () => {
       page: 'trusses-guided',
       problemId: 'truss-1',
     });
+    expect(parseRoute('#/trusses/missing-id')).toEqual({
+      page: 'trusses',
+      problemId: 'missing-id',
+    });
+    expect(parseRoute('#/trusses/missing-id/guided')).toEqual({
+      page: 'trusses-guided',
+      problemId: 'missing-id',
+    });
   });
 
   it('falls back to dashboard for invalid paths', () => {

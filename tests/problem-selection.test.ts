@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { selectGuidedBeamProblemFromRoute, selectPracticeProblemFromRoute } from '../src/app/routing/problemSelection';
+import {
+  selectGuidedBeamProblemFromRoute,
+  selectGuidedTrussProblemFromRoute,
+  selectPracticeProblemFromRoute,
+  selectTrussPracticeProblemFromRoute
+} from '../src/app/routing/problemSelection';
 
 describe('route prop problem selection', () => {
   const problems = [
@@ -41,6 +46,50 @@ describe('route prop problem selection', () => {
     expect(selectGuidedBeamProblemFromRoute('unknown-beam', problems)).toEqual({
       kind: 'missing',
       problemId: 'unknown-beam',
+    });
+  });
+
+  it('selects truss practice routes and defaults only when no id is provided', () => {
+    const trusses = [{ id: 'truss-a' }, { id: 'truss-b' }];
+    expect(selectTrussPracticeProblemFromRoute(null, trusses)).toEqual({
+      kind: 'default',
+      problemId: 'truss-a',
+    });
+    expect(selectTrussPracticeProblemFromRoute('truss-b', trusses)).toEqual({
+      kind: 'route',
+      problemId: 'truss-b',
+    });
+    expect(selectTrussPracticeProblemFromRoute('missing-truss', trusses)).toEqual({
+      kind: 'missing',
+      problemId: 'missing-truss',
+    });
+  });
+
+  it('does not default guided truss routes when the id is missing or unknown', () => {
+    const trusses = [{ id: 'truss-a' }, { id: 'truss-b' }];
+    expect(selectGuidedTrussProblemFromRoute(undefined, trusses)).toEqual({
+      kind: 'missing',
+      problemId: '',
+    });
+    expect(selectGuidedTrussProblemFromRoute('missing-truss', trusses)).toEqual({
+      kind: 'missing',
+      problemId: 'missing-truss',
+    });
+    expect(selectGuidedTrussProblemFromRoute('truss-b', trusses)).toEqual({
+      kind: 'route',
+      problemId: 'truss-b',
+    });
+  });
+
+  it('tracks truss route prop changes while a page remains mounted', () => {
+    const trusses = [{ id: 'truss-a' }, { id: 'truss-b' }];
+    expect(selectTrussPracticeProblemFromRoute('truss-a', trusses)).toEqual({
+      kind: 'route',
+      problemId: 'truss-a',
+    });
+    expect(selectTrussPracticeProblemFromRoute('truss-b', trusses)).toEqual({
+      kind: 'route',
+      problemId: 'truss-b',
     });
   });
 });

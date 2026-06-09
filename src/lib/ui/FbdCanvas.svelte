@@ -2,6 +2,7 @@
   import type { RigidBody, Support, Load, Reaction, Point } from '../domain/models/types';
   import { getDistributedLoadResultant } from '../domain/loads/load';
   import { locale } from '../utils/i18n';
+  import { createFbdViewport, toMeterX as viewportToMeterX, toMeterY as viewportToMeterY, toSvgX as viewportToSvgX, toSvgY as viewportToSvgY } from './fbdViewport';
 
   export let body: RigidBody;
   export let supports: Support[];
@@ -19,31 +20,27 @@
   // SVG parameters
   const svgWidth = 750;
   const svgHeight = 350;
-  const centerX = svgWidth / 2;
-  const centerY = svgHeight / 2;
 
   // Scaling factor: map meters to SVG pixels
-  $: scale = Math.min(500 / body.width, 150 / body.height);
+  $: viewport = createFbdViewport({ svgWidth, svgHeight, bodyWidth: body.width, bodyHeight: body.height });
+  $: scale = viewport.scale;
 
   // Coordinate conversion helpers
   function toSvgX(xMeter: number): number {
-    return centerX + (xMeter - body.width / 2) * scale;
+    return viewportToSvgX(viewport, xMeter);
   }
 
   // In SVG, Y goes down, so we subtract from centerY
   function toSvgY(yMeter: number): number {
-    return centerY - (yMeter - body.height / 2) * scale;
+    return viewportToSvgY(viewport, yMeter);
   }
 
   function toMeterX(svgX: number): number {
-    const rawX = (svgX - centerX) / scale + body.width / 2;
-    // Snap to 1 decimal place (e.g. 0.1m resolution)
-    return Math.max(0, Math.min(body.width, Math.round(rawX * 10) / 10));
+    return viewportToMeterX(viewport, svgX);
   }
 
   function toMeterY(svgY: number): number {
-    const rawY = (centerY - svgY) / scale + body.height / 2;
-    return Math.max(0, Math.min(body.height, Math.round(rawY * 10) / 10));
+    return viewportToMeterY(viewport, svgY);
   }
 
   function handleSvgClick(event: MouseEvent) {

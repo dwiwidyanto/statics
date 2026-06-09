@@ -12,6 +12,7 @@
     buildFinalAttemptFromTelemetry
   } from '../../lib/domain/progress/guidedTelemetry';
   import type { GuidedTrussStep, GuidedTrussState, DeterminacyAnswers } from '../../lib/domain/truss/guidedTypes';
+  import { selectGuidedTrussProblemFromRoute } from '../routing/problemSelection';
 
   // Import sub-step components
   import GuidedTrussStepper from '../components/truss-guided/GuidedTrussStepper.svelte';
@@ -21,6 +22,7 @@
   import JointSelectionStep from '../components/truss-guided/JointSelectionStep.svelte';
   import MemberForceStep from '../components/truss-guided/MemberForceStep.svelte';
   import GuidedTrussSummary from '../components/truss-guided/GuidedTrussSummary.svelte';
+  import TrussRouteNotFound from '../components/truss/TrussRouteNotFound.svelte';
 
   import TrussCanvas from '../../lib/ui/TrussCanvas.svelte';
 
@@ -30,9 +32,12 @@
   const repo = getProgressRepository();
   let showToast = false;
 
-  // 1. Resolve active problem
-  $: activeProblem = trussProblems.find(p => p.id === problemId) || trussProblems[0];
-  $: solverResult = solveTruss(activeProblem);
+  // 1. Resolve active problem without falling back on invalid guided routes.
+  $: problemSelection = selectGuidedTrussProblemFromRoute(problemId, trussProblems);
+  $: activeProblem = problemSelection.kind === 'route'
+    ? trussProblems.find(p => p.id === problemSelection.problemId) ?? null
+    : null;
+  $: solverResult = activeProblem ? solveTruss(activeProblem) : null;
 
   // 2. State management
   let currentStep: GuidedTrussStep = 'overview';
@@ -67,7 +72,7 @@
   let misconceptions: string[] = [];
   let isSaved = false;
   let completionWarning: string | null = null;
-  let telemetrySession = createGuidedAttemptSession(activeProblem);
+  let telemetrySession = createGuidedAttemptSession(trussProblems[0]);
 
   // Reset states when activeProblem changes
   $: if (activeProblem) {
@@ -127,6 +132,7 @@
   }
 
   function handleCompleteReactions(stepScore: number, stepMisconceptions: string[]) {
+    if (!solverResult) return;
     misconceptions = [...misconceptions, ...stepMisconceptions];
     // Copy reference reactions to solved reactions to show them on canvas/next steps
     solvedReactions = { ...solverResult.reactions };
@@ -134,6 +140,7 @@
   }
 
   function handleCompleteZeroForce(stepScore: number, stepMisconceptions: string[]) {
+    if (!solverResult) return;
     misconceptions = [...misconceptions, ...stepMisconceptions];
     
     // Add correct zero-force members immediately to solved list
@@ -153,6 +160,7 @@
   }
 
   function handleSolveJointForces(solvedForces: Record<string, number>, stepScore: number, stepMisconceptions: string[]) {
+    if (!activeProblem) return;
     misconceptions = [...misconceptions, ...stepMisconceptions];
 
     // Accumulate solved forces
@@ -183,6 +191,7 @@
 
   function saveAttempt(): boolean {
     if (isSaved) return true;
+    if (!activeProblem) return false;
 
     const flatAnswers: Record<string, number> = {};
     for (const [k, v] of Object.entries(reactionAnswers)) {
@@ -232,6 +241,9 @@
     </div>
   {/if}
 
+  {#if !activeProblem || !solverResult}
+    <TrussRouteNotFound problemId={problemId ?? ''} {onNavigate} />
+  {:else}
   <header class="page-header">
     <button class="btn btn-secondary back-btn" on:click={() => onNavigate('trusses', { problemId })}>
       ◀ {$locale === 'id' ? 'Kembali ke Latihan Mandiri' : 'Back to Practice'}
@@ -347,6 +359,7 @@
       {/if}
     </div>
   </div>
+  {/if}
 </div>
 
 <style>
