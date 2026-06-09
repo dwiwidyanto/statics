@@ -1,10 +1,11 @@
 <script lang="ts">
   import { locale } from '../../../lib/utils/i18n';
   import type { Attempt } from '../../../lib/domain/progress/types';
-  import { getRouteForAttempt } from '../../../app/routing/router';
+  import type { AnyProblem } from '../../../lib/services/progressRepository';
+  import { getAttemptNavigationTarget } from '../../../app/routing/attemptRoutes';
 
   export let recentAttempts: Attempt[];
-  export let allProblems: any[];
+  export let allProblems: AnyProblem[];
   export let onNavigate: (page: string, params?: any) => void;
   export let handleContinue: () => void;
 
@@ -42,25 +43,8 @@
   }
 
   function handleAttemptClick(attempt: Attempt) {
-    const route = getRouteForAttempt(attempt.problemId, allProblems);
-    
-    // Check if it is a guided attempt by checking misconceptions, skillBreakdown, or guidedTelemetry
-    const isGuided = attempt.guidedTelemetry !== undefined || attempt.misconceptions !== undefined || attempt.skillBreakdown !== undefined;
-    
-    if (isGuided && attempt.guidedTelemetry) {
-      onNavigate(`progress/attempt/${attempt.id}`);
-    } else if (route.page === 'trusses') {
-      if (isGuided) {
-        onNavigate(`trusses/${route.problemId}/guided`);
-      } else {
-        onNavigate('trusses', { problemId: route.problemId });
-      }
-    } else if (route.page === 'guided') {
-      onNavigate(`guided/${route.problemId}`);
-    } else {
-      const pId = ('problemId' in route && route.problemId) ? route.problemId : attempt.problemId;
-      onNavigate('practice', { problemId: pId });
-    }
+    const target = getAttemptNavigationTarget(attempt, allProblems);
+    onNavigate(target.page, target.params);
   }
 </script>
 

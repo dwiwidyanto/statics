@@ -287,4 +287,25 @@ describe('Local Progress Repository', () => {
     expect(repo.getAttempts()).toHaveLength(1);
     expect(repo.getAttempts()[0].id).toBe('att-keep');
   });
+
+  it('allows explicit dangerous empty replace confirmation', () => {
+    const repo = getProgressRepository();
+    repo.reset();
+    repo.saveAttempt({
+      id: 'att-erase',
+      problemId: 'prob-1',
+      problemVersion: 1,
+      createdAt: '2026-06-01T00:00:00Z',
+      answers: {},
+      score: 1,
+      feedback: [],
+      completed: true,
+    });
+
+    const result = repo.importProgress({ schemaVersion: 1, attempts: [] }, 'replace', {
+      allowDangerousEmptyReplace: true,
+    });
+    expect(result.importedAttempts).toBe(0);
+    expect(repo.getAttempts()).toEqual([]);
+  });
 });

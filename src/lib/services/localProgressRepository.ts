@@ -16,6 +16,7 @@ import type {
 } from '../domain/progress/types';
 import { CURRENT_SCHEMA_VERSION } from '../domain/progress/types';
 import { normalizeAttempt, normalizeProgressData } from '../domain/progress/telemetryMigration';
+import { createProgressImportPlan } from './progressImportPlan';
 
 const STORAGE_KEY = 'staticslab.progress.v1';
 
@@ -176,38 +177,52 @@ export class LocalProgressRepository implements ProgressRepository {
     };
   }
 
-  importProgress(data: unknown, mode: 'replace' | 'merge'): {
+  importProgress(data: unknown, mode: 'replace' | 'merge', options?: { allowDangerousEmptyReplace?: boolean }): {
     importedAttempts: number;
     skippedAttempts: number;
     duplicateAttempts: number;
+    schemaVersion: number;
+    validAttempts: number;
+    replacedAttempts: number;
     warnings: string[];
   } {
-    const normalized = normalizeProgressData(data);
-    const skippedInvalid = normalized.warnings.filter(w => w.startsWith('Skipped invalid attempt')).length;
+    const plan = createProgressImportPlan(data, this.data.attempts);
 
     if (mode === 'replace') {
-      if (normalized.data.attempts.length === 0 && normalized.warnings.length > 0) {
+      if (plan.validAttempts.length === 0 && !options?.allowDangerousEmptyReplace) {
         return {
           importedAttempts: 0,
-          skippedAttempts: skippedInvalid,
+          skippedAttempts: plan.skippedInvalidCount,
           duplicateAttempts: 0,
-          warnings: normalized.warnings,
+          schemaVersion: plan.schemaVersion,
+          validAttempts: 0,
+          replacedAttempts: 0,
+          warnings: [
+            ...plan.warnings,
+            'Replace import blocked because the file contains zero valid attempts.'
+          ],
         };
       }
-      this.data = normalized.data;
+      this.data = {
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        attempts: plan.validAttempts,
+      };
       saveData(this.data);
       return {
-        importedAttempts: normalized.data.attempts.length,
-        skippedAttempts: skippedInvalid,
-        duplicateAttempts: 0,
-        warnings: normalized.warnings,
+        importedAttempts: plan.validAttempts.length,
+        skippedAttempts: plan.skippedInvalidCount + plan.internalDuplicateCount,
+        duplicateAttempts: plan.internalDuplicateCount,
+        schemaVersion: plan.schemaVersion,
+        validAttempts: plan.validAttempts.length,
+        replacedAttempts: plan.validAttempts.length,
+        warnings: plan.warnings,
       };
     }
 
     const existingById = new Map(this.data.attempts.map(attempt => [attempt.id, attempt]));
     let added = 0;
     let duplicates = 0;
-    for (const attempt of normalized.data.attempts) {
+    for (const attempt of plan.validAttempts) {
       if (!existingById.has(attempt.id)) {
         existingById.set(attempt.id, attempt);
         added++;
@@ -226,9 +241,12 @@ export class LocalProgressRepository implements ProgressRepository {
 
     return {
       importedAttempts: added,
-      skippedAttempts: duplicates + skippedInvalid,
+      skippedAttempts: duplicates + plan.skippedInvalidCount + plan.internalDuplicateCount,
       duplicateAttempts: duplicates,
-      warnings: normalized.warnings,
+      schemaVersion: plan.schemaVersion,
+      validAttempts: plan.validAttempts.length,
+      replacedAttempts: 0,
+      warnings: plan.warnings,
     };
   }
 

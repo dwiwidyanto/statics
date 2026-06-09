@@ -222,6 +222,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Learning recommendations use metadata to prefer prerequisites and easier unsolved problems before advanced ones.
 - Progress header was extracted to a focused component as a first maintainability step.
 
+### Stage 3H: Progress Import Safety and Dashboard Refactor
+- Progress import decisions are planned by `progressImportPlan.ts` before repository data is mutated.
+- Replace import with zero valid attempts is blocked by default and requires a visibly separate dangerous confirmation.
+- Import results now report mode, schema version, valid attempts, added/replaced attempts, duplicate skips, invalid skips, and warnings.
+- `ProgressPage.svelte` was reduced to a page coordinator with import modal, result banner, diagnostics, recommendations, and actions extracted to components.
+- Recent attempt and recommendation navigation decisions are covered by pure route helpers and tests.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions
@@ -231,8 +238,9 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Local progress, misconception tracking, and attempt review
 
 ### Local Progress Portability
-- Progress can be exported from `#/progress` as a versioned JSON file.
+- Progress can be exported from `#/progress` as a versioned JSON file containing `schemaVersion`, `exportedAt`, `appName`, `appVersion`, `generatedBy`, `attemptCount`, and `attempts`.
 - Progress can be imported back into the same browser or another browser using merge or replace mode.
+- Replace mode can erase local progress; imports with zero valid attempts are blocked unless the user explicitly confirms the dangerous empty replace action.
 - Instructor CSV export is available from `#/progress` and includes attempt id, problem id, topic, score, completion, timestamp, misconceptions, weakest skill, and hint usage.
 - All progress data remains browser-local in `localStorage`; no backend or authentication is used yet.
 

@@ -25,8 +25,17 @@ describe('Progress Import / Export Service', () => {
     const parsed = JSON.parse(raw);
     expect(parsed.schemaVersion).toBe(1);
     expect(parsed.appName).toBe('StaticsLab');
+    expect(parsed.generatedBy).toBe('StaticsLab local progress export');
+    expect(parsed.attemptCount).toBe(1);
     expect(parsed.attempts.length).toBe(1);
     expect(parsed.attempts[0].id).toBe('att-1');
+  });
+
+  it('round-trips exported progress through the import validator', () => {
+    const raw = serializeProgressData(mockAttempts);
+    const result = validateAndParseImportData(raw);
+    expect(result.isValid).toBe(true);
+    expect(result.attempts?.map(a => a.id)).toEqual(['att-1']);
   });
 
   it('rejects malformed json strings', () => {

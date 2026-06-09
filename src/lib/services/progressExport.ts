@@ -7,6 +7,8 @@ export interface ProgressExportData {
   exportedAt: string;
   appName: string;
   appVersion: string;
+  generatedBy: string;
+  attemptCount: number;
   attempts: Attempt[];
 }
 
@@ -19,6 +21,8 @@ export function serializeProgressData(attempts: Attempt[]): string {
     exportedAt: new Date().toISOString(),
     appName: 'StaticsLab',
     appVersion: '1.0.0',
+    generatedBy: 'StaticsLab local progress export',
+    attemptCount: attempts.length,
     attempts
   };
   return JSON.stringify(exportData, null, 2);

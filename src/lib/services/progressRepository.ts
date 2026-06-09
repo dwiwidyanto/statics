@@ -33,10 +33,13 @@ export interface ProgressRepository {
   exportProgress(): ProgressData;
 
   /** Import progress from an unknown JSON-compatible value. */
-  importProgress(data: unknown, mode: 'replace' | 'merge'): {
+  importProgress(data: unknown, mode: 'replace' | 'merge', options?: { allowDangerousEmptyReplace?: boolean }): {
     importedAttempts: number;
     skippedAttempts: number;
     duplicateAttempts: number;
+    schemaVersion: number;
+    validAttempts: number;
+    replacedAttempts: number;
     warnings: string[];
   };
 
