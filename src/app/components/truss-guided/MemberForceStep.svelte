@@ -144,8 +144,8 @@
   <h3>{$locale === 'id' ? `Menyelesaikan Titik Hubung ${prompt.jointLabel}` : `Solving Joint ${prompt.jointLabel}`}</h3>
   <p class="step-instruction">
     {$locale === 'id'
-      ? 'Susun persamaan kesetimbangan ΣFx = 0 dan ΣFy = 0 untuk menghitung gaya batang yang tidak diketahui. Gunakan tanda positif (+) untuk tarik dan negatif (-) untuk tekan.'
-      : 'Formulate the ΣFx = 0 and ΣFy = 0 equilibrium equations to solve for the unknown member forces. Use positive (+) for tension and negative (-) for compression.'}
+      ? 'Susun persamaan kesetimbangan ΣFx = 0 dan ΣFy = 0 untuk menghitung gaya batang yang tidak diketahui. Gunakan tanda positif (+) untuk tarik dan negatif (-) untuk tekan; dua unknown hanya dapat diselesaikan bersama jika arahnya tidak segaris.'
+      : 'Formulate the ΣFx = 0 and ΣFy = 0 equilibrium equations to solve for the unknown member forces. Use positive (+) for tension and negative (-) for compression; two unknowns can be solved together only when their directions are non-collinear.'}
   </p>
 
   <div class="equations-prompt">

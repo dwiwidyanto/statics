@@ -270,6 +270,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Instructor progress CSV export includes guided skill-breakdown columns while preserving existing local progress data compatibility.
 - Quality gates remain unchanged: test, check, build, production audit, and hygiene scans.
 
+### Stage 3O: Method-of-Joints Path Integrity
+- Method-of-joints solving now scans past joints whose two unknown member directions are collinear instead of treating the first blocked joint as final failure.
+- Guided truss joint recommendations are collinearity-aware: 2-unknown joints are recommended only when the member directions are non-collinear.
+- Simultaneous joint-equilibrium fallback is reserved for determinate, stable trusses where no 1-unknown or non-collinear 2-unknown joint-by-joint path remains.
+- Guided workflow explains why collinear two-unknown joints do not provide two independent equations and sends fallback-only cases to normal truss practice/results without saving a fake guided completion.
+- Existing local progress storage and solver sign convention remain unchanged.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions

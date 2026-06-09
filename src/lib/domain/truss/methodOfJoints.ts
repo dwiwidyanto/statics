@@ -3,6 +3,7 @@ import type { Support, Reaction } from '../models/types';
 import { getReactionsForSupport } from '../supports/support';
 import { getDistance } from '../geometry/vector2d';
 import { getUnitVector } from './geometry';
+import { getJointSolvability } from './jointSolvability';
 
 export interface JointsSolveResult {
   isSolved: boolean;
@@ -38,15 +39,30 @@ export function solveMethodOfJoints(
 
   const solvedMembers = new Set<string>(zeroForceMembers);
   let solvedSomething = true;
+  const skippedCollinearJoints = new Set<string>();
 
   while (solvedMembers.size < members.length && solvedSomething) {
     solvedSomething = false;
+    let skippedCollinearThisPass = false;
 
     for (const joint of joints) {
       const conn = members.filter(m => m.jointA === joint.id || m.jointB === joint.id);
       const unsolvedConn = conn.filter(m => !solvedMembers.has(m.id));
+      const solvability = getJointSolvability(truss, joint.id, solvedMembers);
 
-      if (unsolvedConn.length > 0 && unsolvedConn.length <= 2) {
+      if (solvability.kind === 'two_collinear_unknowns') {
+        skippedCollinearThisPass = true;
+        if (!skippedCollinearJoints.has(joint.id)) {
+          const labels = unsolvedConn.map(member => member.label).join(' and ');
+          messages.push(
+            `Joint ${joint.label} has two unknown members (${labels}), but their lines are collinear, so ΣFx and ΣFy are not independent enough to solve both at this joint.`
+          );
+          skippedCollinearJoints.add(joint.id);
+        }
+        continue;
+      }
+
+      if (solvability.isSolvable && unsolvedConn.length > 0 && unsolvedConn.length <= 2) {
         // Collect known forces acting at this joint
         // Loads
         const jointLoads = loads.filter(l => l.jointId === joint.id);
@@ -160,10 +176,7 @@ export function solveMethodOfJoints(
           const f = -F_known_y;
 
           const D = a * d - b * c;
-          if (Math.abs(D) < 1e-5) {
-            messages.push(`Collinear members ${m1.label} and ${m2.label} at joint ${joint.label} prevent solving.`);
-            return { isSolved: false, memberForces, jointEquations, messages };
-          }
+          if (Math.abs(D) < 1e-6) continue;
 
           const f1 = (e * d - b * f) / D;
           const f2 = (a * f - e * c) / D;
@@ -188,6 +201,10 @@ export function solveMethodOfJoints(
         }
       }
     }
+
+    if (!solvedSomething && skippedCollinearThisPass) {
+      messages.push('No non-collinear 1- or 2-unknown joint remains; simultaneous joint equilibrium fallback is required.');
+    }
   }
 
   const isSolved = solvedMembers.size === members.length;
@@ -197,11 +214,12 @@ export function solveMethodOfJoints(
     const rCount = allReactionsList.length;
     if (mCount + rCount === 2 * jCount) {
       messages.push(
+        'No non-collinear 1- or 2-unknown joint remains; simultaneous joint equilibrium fallback is required. ' +
         'The truss is statically determinate but cannot be solved by a greedy joint-by-joint marching method. ' +
-        'All remaining unsolved joints have 3 or more unknown forces, which requires solving the system of equations simultaneously.'
+        'All remaining unsolved joints have either too many unknown forces or two collinear unknown member forces, which requires solving the system of equations simultaneously.'
       );
     } else {
-      messages.push('Method of joints could not progress because there are no joints with at most two unknown member forces remaining.');
+      messages.push('Method of joints could not progress because there are no non-collinear joints with one or two unknown member forces remaining.');
     }
   }
 

@@ -3,6 +3,7 @@ import type { ZeroForceSelectionFeedback, JointSelectionFeedback, JointEquationP
 import { getReactionsForSupport } from '../supports/support';
 import { getDistance } from '../geometry/vector2d';
 import { getUnitVector } from './geometry';
+import { getJointSolvability, getUnsolvedMembersAtJoint } from './jointSolvability';
 
 export { countTrussUnknowns, classifyTrussByCount } from './determinacy';
 
@@ -14,10 +15,7 @@ export function getUnknownMembersAtJoint(
   jointId: string,
   solvedMemberIds: string[]
 ): string[] {
-  const solvedSet = new Set(solvedMemberIds);
-  return truss.members
-    .filter(m => (m.jointA === jointId || m.jointB === jointId) && !solvedSet.has(m.id))
-    .map(m => m.id);
+  return getUnsolvedMembersAtJoint(truss, jointId, solvedMemberIds);
 }
 
 /**
@@ -33,9 +31,8 @@ export function getRecommendedNextJoints(truss: TrussModel, solvedMemberIds: str
   }
 
   for (const joint of truss.joints) {
-    const conn = truss.members.filter(m => m.jointA === joint.id || m.jointB === joint.id);
-    const unsolved = conn.filter(m => !solvedSet.has(m.id));
-    if (unsolved.length > 0 && unsolved.length <= 2) {
+    const solvability = getJointSolvability(truss, joint.id, solvedSet);
+    if (solvability.isSolvable) {
       recommended.push(joint.id);
     }
   }
@@ -119,26 +116,38 @@ export function checkJointCanBeSolved(
   solvedMemberIds: string[]
 ): JointSelectionFeedback {
   const unknowns = getUnknownMembersAtJoint(truss, jointId, solvedMemberIds);
-  const joint = truss.joints.find(j => j.id === jointId);
-  const label = joint ? joint.label : jointId;
+  const solvability = getJointSolvability(truss, jointId, solvedMemberIds);
+  const label = solvability.jointLabel;
 
-  if (unknowns.length === 0) {
+  if (solvability.kind === 'invalid_joint') {
+    return {
+      isValid: false,
+      unknownsCount: 0,
+      message: `Joint ${label} was not found in this truss model.`
+    };
+  } else if (solvability.kind === 'no_unknowns') {
     return {
       isValid: false,
       unknownsCount: 0,
       message: `All members connected to joint ${label} are already solved.`
     };
-  } else if (unknowns.length <= 2) {
+  } else if (solvability.kind === 'one_unknown' || solvability.kind === 'two_independent_unknowns') {
     return {
       isValid: true,
       unknownsCount: unknowns.length,
-      message: `Joint ${label} has ${unknowns.length} unknown force(s) and can be solved.`
+      message: `Joint ${label} has ${unknowns.length} unknown force(s) and can be solved. Positive member force means tension; negative member force means compression.`
+    };
+  } else if (solvability.kind === 'two_collinear_unknowns') {
+    return {
+      isValid: false,
+      unknownsCount: unknowns.length,
+      message: `Joint ${label} has 2 unknown forces, but those member directions are collinear. ΣFx = 0 and ΣFy = 0 do not provide two independent directions for solving both forces at this joint. Choose a joint with 1 unknown or 2 non-collinear unknowns.`
     };
   } else {
     return {
       isValid: false,
       unknownsCount: unknowns.length,
-      message: `Joint ${label} has ${unknowns.length} unknown forces. The Method of Joints can solve at most 2 unknowns per joint using ΣFx = 0 and ΣFy = 0. Choose a different joint with 1 or 2 unknowns.`
+      message: `Joint ${label} has ${unknowns.length} unknown forces. The Method of Joints can solve at most 2 unknowns per joint using ΣFx = 0 and ΣFy = 0, and 2 unknowns must be non-collinear. Choose a different joint with 1 unknown or 2 non-collinear unknowns.`
     };
   }
 }

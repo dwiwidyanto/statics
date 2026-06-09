@@ -271,7 +271,7 @@ For a planar truss with $m$ members, $r$ support reaction components, and $j$ jo
 
 ### Method of Joints Workflow:
 1. **Calculate Support Reactions**: Solve reactions for the entire truss treating it as a single rigid body using $\\sum F_x = 0$, $\\sum F_y = 0$, $\\sum M_P = 0$.
-2. **Find a Joint with $\\le 2$ Unknowns**: Choose a joint that connects at most two members with unknown forces.
+2. **Find a Solvable Joint**: Choose a joint with one unknown member force, or two unknown member forces whose directions are not collinear.
 3. **Apply Joint Equilibrium**: Write $\\sum F_x = 0$ and $\\sum F_y = 0$ for the joint. Solve for the unknowns.
 4. **Propagate**: Move to adjacent joints, treating the solved member forces as known values. Repeat until all member forces are solved.
 

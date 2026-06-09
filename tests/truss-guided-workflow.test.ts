@@ -205,6 +205,11 @@ describe('getRecommendedNextJoints', () => {
     const recommended = getRecommendedNextJoints(kingPostTruss, []);
     expect(recommended).not.toContain('j-c');
   });
+
+  it('excludes joints with 2 collinear unknown members', () => {
+    const recommended = getRecommendedNextJoints(kingPostTruss, ['m-cd']);
+    expect(recommended).not.toContain('j-c');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -286,6 +291,14 @@ describe('checkJointCanBeSolved', () => {
     expect(fb.message).toContain('3 unknown forces');
     expect(fb.message).toContain('at most 2');
     expect(fb.message).toContain('ΣFx');
+  });
+
+  it('returns valid=false for joint with 2 collinear unknowns', () => {
+    const fb = checkJointCanBeSolved(kingPostTruss, 'j-c', ['m-cd']);
+    expect(fb.isValid).toBe(false);
+    expect(fb.unknownsCount).toBe(2);
+    expect(fb.message).toContain('collinear');
+    expect(fb.message).toContain('independent');
   });
 });
 

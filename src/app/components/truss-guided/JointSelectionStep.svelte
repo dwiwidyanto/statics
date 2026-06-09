@@ -104,8 +104,8 @@
   <h3>{$locale === 'id' ? 'Langkah 5: Pemilihan Titik Hubung' : 'Step 5: Select Next Joint'}</h3>
   <p class="step-instruction">
     {$locale === 'id'
-      ? 'Pilih titik hubung berikutnya untuk dianalisis. Aturan: pilih titik hubung yang memiliki maksimal 2 gaya batang yang tidak diketahui agar dapat diselesaikan dengan persamaan ΣFx = 0 dan ΣFy = 0.'
-      : 'Select the next joint to analyze. Rule: select a joint with at most 2 unknown member forces so it can be solved with ΣFx = 0 and ΣFy = 0.'}
+      ? 'Pilih titik hubung berikutnya untuk dianalisis. Aturan: pilih titik hubung dengan 1 gaya batang tak diketahui, atau 2 gaya batang tak diketahui yang tidak segaris, agar ΣFx = 0 dan ΣFy = 0 memberi arah independen.'
+      : 'Select the next joint to analyze. Rule: choose a joint with 1 unknown member force, or 2 non-collinear unknown member forces, so ΣFx = 0 and ΣFy = 0 provide independent directions.'}
   </p>
 
   <div class="joints-picker-grid">

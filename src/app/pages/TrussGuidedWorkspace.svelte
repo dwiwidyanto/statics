@@ -13,6 +13,7 @@
   } from '../../lib/domain/progress/guidedTelemetry';
   import type { GuidedTrussStep, GuidedTrussState, DeterminacyAnswers } from '../../lib/domain/truss/guidedTypes';
   import { selectGuidedTrussProblemFromRoute } from '../routing/problemSelection';
+  import { getRecommendedNextJoints } from '../../lib/domain/truss/guidedWorkflow';
 
   // Import sub-step components
   import GuidedTrussStepper from '../components/truss-guided/GuidedTrussStepper.svelte';
@@ -39,6 +40,14 @@
     ? trussProblems.find(p => p.id === problemSelection.problemId) ?? null
     : null;
   $: solverResult = activeProblem ? solveTruss(activeProblem) : null;
+  $: guidedRecommendedJoints = activeProblem ? getRecommendedNextJoints(activeProblem, solvedMemberIds) : [];
+  $: noGuidedJointPath = Boolean(
+    activeProblem &&
+    currentStep === 'joint_sequence' &&
+    !currentSolvingJointId &&
+    solvedMemberIds.length < activeProblem.members.length &&
+    guidedRecommendedJoints.length === 0
+  );
 
   // 2. State management
   let currentStep: GuidedTrussStep = 'overview';
@@ -332,7 +341,29 @@
             onStepAttempt={(data) => handleStepAttempt('zero_members', data)}
           />
         {:else if currentStep === 'joint_sequence'}
-          {#if !currentSolvingJointId}
+          {#if noGuidedJointPath}
+            <div class="step-card path-blocked-card" role="status">
+              <h3>{$locale === 'id' ? 'Jalur Metode Titik Hubung Tidak Tersedia' : 'Method-of-Joints Path Unavailable'}</h3>
+              <p class="desc">
+                {$locale === 'id'
+                  ? 'Tidak ada joint tersisa dengan 1 unknown atau 2 unknown yang tidak segaris. Dua gaya batang yang segaris bekerja pada garis yang sama, sehingga ΣFx dan ΣFy tidak memberi dua arah independen untuk menyelesaikannya dari satu joint.'
+                  : 'No remaining joint has 1 unknown or 2 non-collinear unknowns. Two collinear member forces act along the same line, so ΣFx and ΣFy do not provide two independent directions for solving them from one joint.'}
+              </p>
+              <p class="desc">
+                {$locale === 'id'
+                  ? 'Fallback persamaan simultan tetap valid untuk rangka statis tertentu, tetapi itu bukan urutan langkah demi langkah Metode Titik Hubung. Buka latihan mandiri untuk melihat hasil dan panel fallback tanpa menyimpan penyelesaian terpandu palsu.'
+                  : 'The simultaneous-equilibrium fallback is still mathematically valid for determinate trusses, but it is not the same as a step-by-step method-of-joints path. Open normal practice to inspect the result and fallback panel without saving a fake guided completion.'}
+              </p>
+              <div class="actions">
+                <button class="btn btn-secondary" on:click={() => onNavigate('dashboard')}>
+                  {$locale === 'id' ? 'Ke Dashboard' : 'Dashboard'}
+                </button>
+                <button class="btn btn-primary" on:click={() => onNavigate('trusses', { problemId: activeProblem.id })}>
+                  {$locale === 'id' ? 'Lihat Latihan Mandiri' : 'View Practice Results'}
+                </button>
+              </div>
+            </div>
+          {:else if !currentSolvingJointId}
             <JointSelectionStep
               truss={activeProblem}
               solvedMemberIds={solvedMemberIds}
@@ -508,9 +539,14 @@
     line-height: 1.4;
   }
 
+  .path-blocked-card {
+    border-left: 4px solid #f59e0b;
+  }
+
   .actions {
     display: flex;
     justify-content: flex-end;
+    gap: 0.6rem;
   }
 
   .btn {

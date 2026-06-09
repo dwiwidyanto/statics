@@ -12,8 +12,8 @@
     <p><strong>{$locale === 'id' ? 'Fallback persamaan simultan joint.' : 'Solved by simultaneous joint equilibrium fallback.'}</strong></p>
     <p>
       {$locale === 'id'
-        ? 'Rangka ini statis tertentu, tetapi langkah joint-by-joint tidak dapat lanjut karena tidak ada joint dengan dua atau lebih sedikit gaya tak diketahui pada tahap itu. Aplikasi merakit semua persamaan ΣFx dan ΣFy lalu menyelesaikannya bersama.'
-        : 'The truss is statically determinate, but the greedy joint-by-joint path could not continue because no joint had two or fewer unresolved unknowns at that step. The app assembled all ΣFx and ΣFy equations and solved them together.'}
+        ? 'Rangka ini statis tertentu, tetapi jalur joint-by-joint tidak tersedia karena tidak ada joint tersisa dengan 1 unknown atau 2 unknown yang tidak segaris. Aplikasi merakit semua persamaan ΣFx dan ΣFy lalu menyelesaikannya bersama.'
+        : 'The truss is statically determinate, but the joint-by-joint path is unavailable because no remaining joint has 1 unknown or 2 non-collinear unknowns. The app assembled all ΣFx and ΣFy equations and solved them together.'}
     </p>
     <p>{$locale === 'id' ? 'Gaya batang positif berarti tarik; negatif berarti tekan.' : 'Positive member force means tension; negative means compression.'}</p>
     {#if equationSystem}
