@@ -11,9 +11,19 @@
     finalizeGuidedTelemetrySession,
     buildFinalAttemptFromTelemetry
   } from '../../lib/domain/progress/guidedTelemetry';
-  import type { GuidedTrussStep, GuidedTrussState, DeterminacyAnswers } from '../../lib/domain/truss/guidedTypes';
   import { selectGuidedTrussProblemFromRoute } from '../routing/problemSelection';
-  import { getRecommendedNextJoints } from '../../lib/domain/truss/guidedWorkflow';
+  import {
+    applyCompletionWarning,
+    applyDeterminacyCompleted,
+    applyJointSelected,
+    applyMemberForcesSolved,
+    applyOverviewCompleted,
+    applyReactionsCompleted,
+    applyScoreAndMisconceptions,
+    applyZeroForceCompleted,
+    buildGuidedTrussCompletionGuard,
+    createInitialGuidedTrussState
+  } from '../../lib/domain/truss/guidedStateMachine';
 
   // Import sub-step components
   import GuidedTrussStepper from '../components/truss-guided/GuidedTrussStepper.svelte';
@@ -23,8 +33,9 @@
   import JointSelectionStep from '../components/truss-guided/JointSelectionStep.svelte';
   import MemberForceStep from '../components/truss-guided/MemberForceStep.svelte';
   import GuidedTrussSummary from '../components/truss-guided/GuidedTrussSummary.svelte';
+  import GuidedTrussBlockedPathCard from '../components/truss-guided/GuidedTrussBlockedPathCard.svelte';
+  import GuidedTrussOverviewStep from '../components/truss-guided/GuidedTrussOverviewStep.svelte';
   import TrussRouteNotFound from '../components/truss/TrussRouteNotFound.svelte';
-  import SolverMethodPanel from '../components/truss/SolverMethodPanel.svelte';
 
   import TrussCanvas from '../../lib/ui/TrussCanvas.svelte';
 
@@ -40,68 +51,19 @@
     ? trussProblems.find(p => p.id === problemSelection.problemId) ?? null
     : null;
   $: solverResult = activeProblem ? solveTruss(activeProblem) : null;
-  $: guidedRecommendedJoints = activeProblem ? getRecommendedNextJoints(activeProblem, solvedMemberIds) : [];
-  $: noGuidedJointPath = Boolean(
-    activeProblem &&
-    currentStep === 'joint_sequence' &&
-    !currentSolvingJointId &&
-    solvedMemberIds.length < activeProblem.members.length &&
-    guidedRecommendedJoints.length === 0
-  );
 
   // 2. State management
-  let currentStep: GuidedTrussStep = 'overview';
-  
-  let determinacyAnswers: DeterminacyAnswers = {
-    m: null,
-    r: null,
-    j: null,
-    classification: null
-  };
-
-  let reactionAnswers: Record<string, number | null> = {};
-  let zeroForceSelections: string[] = [];
-
-  let solvedMemberForces: Record<string, number> = {};
-  let solvedReactions: Record<string, number> = {};
-  let solvedMemberIds: string[] = [];
-  let solvedJointIds: string[] = [];
-  let jointSequence: string[] = [];
-
-  let currentSolvingJointId: string | null = null;
-  let currentJointAnswers: Record<string, number | null> = {};
-
-  let scoreBreakdown = {
-    determinacy: 0,
-    reactions: 0,
-    zeroForceMembers: 0,
-    jointSelection: 0,
-    memberForces: 0
-  };
-
-  let misconceptions: string[] = [];
+  let guidedState = createInitialGuidedTrussState(trussProblems[0]);
   let isSaved = false;
-  let completionWarning: string | null = null;
   let telemetrySession = createGuidedAttemptSession(trussProblems[0]);
+  let initializedProblemId: string | null = null;
 
   // Reset states when activeProblem changes
-  $: if (activeProblem) {
-    currentStep = 'overview';
-    determinacyAnswers = { m: null, r: null, j: null, classification: null };
-    reactionAnswers = {};
-    zeroForceSelections = [];
-    solvedMemberForces = {};
-    solvedReactions = {};
-    solvedMemberIds = [];
-    solvedJointIds = [];
-    jointSequence = [];
-    currentSolvingJointId = null;
-    currentJointAnswers = {};
-    scoreBreakdown = { determinacy: 0, reactions: 0, zeroForceMembers: 0, jointSelection: 0, memberForces: 0 };
-    misconceptions = [];
+  $: if (activeProblem && activeProblem.id !== initializedProblemId) {
+    guidedState = createInitialGuidedTrussState(activeProblem);
     isSaved = false;
-    completionWarning = null;
     telemetrySession = createGuidedAttemptSession(activeProblem);
+    initializedProblemId = activeProblem.id;
   }
 
   function handleStepAttempt(
@@ -127,98 +89,83 @@
     });
 
     const scoredResult = calculateGuidedScore(telemetrySession.stepAttempts);
-    scoreBreakdown = { ...scoredResult.skillBreakdown };
-    misconceptions = Array.from(new Set(telemetrySession.stepAttempts.flatMap(a => a.misconceptions)));
+    if (activeProblem) {
+      guidedState = applyScoreAndMisconceptions(
+        activeProblem,
+        guidedState,
+        scoredResult.skillBreakdown,
+        telemetrySession.stepAttempts.flatMap(a => a.misconceptions)
+      );
+    }
   }
 
   // Handle step completion
   function handleCompleteOverview() {
-    currentStep = 'determinacy';
+    if (!activeProblem) return;
+    guidedState = applyOverviewCompleted(activeProblem, guidedState);
   }
 
   function handleCompleteDeterminacy(stepScore: number, stepMisconceptions: string[]) {
-    misconceptions = [...misconceptions, ...stepMisconceptions];
-    currentStep = 'reactions';
+    if (!activeProblem) return;
+    guidedState = applyDeterminacyCompleted(activeProblem, guidedState, stepMisconceptions);
   }
 
   function handleCompleteReactions(stepScore: number, stepMisconceptions: string[]) {
-    if (!solverResult) return;
-    misconceptions = [...misconceptions, ...stepMisconceptions];
-    // Copy reference reactions to solved reactions to show them on canvas/next steps
-    solvedReactions = { ...solverResult.reactions };
-    currentStep = 'zero_members';
+    if (!activeProblem || !solverResult) return;
+    guidedState = applyReactionsCompleted(activeProblem, guidedState, solverResult.reactions, stepMisconceptions);
   }
 
   function handleCompleteZeroForce(stepScore: number, stepMisconceptions: string[]) {
-    if (!solverResult) return;
-    misconceptions = [...misconceptions, ...stepMisconceptions];
-    
-    // Add correct zero-force members immediately to solved list
-    const correctZeros = zeroForceSelections.filter(id => solverResult.zeroForceMembers.includes(id));
-    for (const zId of correctZeros) {
-      solvedMemberForces[zId] = 0;
-      solvedMemberIds.push(zId);
-    }
-    solvedMemberIds = [...new Set(solvedMemberIds)];
-
-    currentStep = 'joint_sequence';
+    if (!activeProblem || !solverResult) return;
+    guidedState = applyZeroForceCompleted(activeProblem, guidedState, solverResult.zeroForceMembers, stepMisconceptions);
   }
 
   function handleSelectJoint(jointId: string, stepMisconceptions: string[]) {
-    misconceptions = [...misconceptions, ...stepMisconceptions];
-    currentSolvingJointId = jointId;
+    if (!activeProblem) return;
+    guidedState = applyJointSelected(activeProblem, guidedState, jointId, stepMisconceptions);
   }
 
   function handleSolveJointForces(solvedForces: Record<string, number>, stepScore: number, stepMisconceptions: string[]) {
     if (!activeProblem) return;
-    misconceptions = [...misconceptions, ...stepMisconceptions];
-
-    // Accumulate solved forces
-    for (const [mId, force] of Object.entries(solvedForces)) {
-      solvedMemberForces[mId] = force;
-      solvedMemberIds.push(mId);
-    }
-    solvedMemberIds = [...new Set(solvedMemberIds)];
-
-    if (currentSolvingJointId) {
-      solvedJointIds = [...solvedJointIds, currentSolvingJointId];
-      jointSequence = [...jointSequence, currentSolvingJointId];
-    }
-
-    currentSolvingJointId = null;
+    guidedState = applyMemberForcesSolved(activeProblem, guidedState, solvedForces, stepMisconceptions);
 
     // Check if all members are solved
-    if (solvedMemberIds.length >= activeProblem.members.length) {
+    if (guidedState.pathStatus === 'all_members_solved') {
       if (saveAttempt()) {
-        currentStep = 'summary';
+        guidedState = { ...guidedState, currentStep: 'summary' };
       }
     }
   }
 
   $: scoredResult = calculateGuidedScore(telemetrySession.stepAttempts);
   $: overallScore = scoredResult.totalScore;
-  $: scoreBreakdown = { ...scoredResult.skillBreakdown };
 
   function saveAttempt(): boolean {
     if (isSaved) return true;
     if (!activeProblem) return false;
 
+    const guard = buildGuidedTrussCompletionGuard({ problem: activeProblem, state: guidedState, telemetry: telemetrySession });
+    if (!guard.canSave) {
+      guidedState = applyCompletionWarning(activeProblem, guidedState, guard.warnings.join(' '));
+      return false;
+    }
+
     const flatAnswers: Record<string, number> = {};
-    for (const [k, v] of Object.entries(reactionAnswers)) {
+    for (const [k, v] of Object.entries(guidedState.reactionAnswers)) {
       if (v !== null) flatAnswers[k] = v;
     }
-    for (const [k, v] of Object.entries(solvedMemberForces)) {
+    for (const [k, v] of Object.entries(guidedState.solvedMemberForces)) {
       flatAnswers[k] = v;
     }
 
     const finalized = finalizeGuidedTelemetrySession(telemetrySession, flatAnswers, {
       requiredMemberIds: activeProblem.members.map(member => member.id),
-      solvedMemberIds
+      solvedMemberIds: guidedState.solvedMemberIds
     });
     telemetrySession = finalized.session;
 
     if (finalized.warnings.some(warning => !warning.startsWith('Score '))) {
-      completionWarning = finalized.warnings.join(' ');
+      guidedState = applyCompletionWarning(activeProblem, guidedState, finalized.warnings.join(' '));
       return false;
     }
 
@@ -244,10 +191,10 @@
     </div>
   {/if}
 
-  {#if completionWarning}
+  {#if guidedState.completionWarning}
     <div class="completion-warning" role="alert">
       <strong>{$locale === 'id' ? 'Belum bisa menyimpan ringkasan.' : 'Summary is not ready to save.'}</strong>
-      <span>{completionWarning}</span>
+      <span>{guidedState.completionWarning}</span>
     </div>
   {/if}
 
@@ -265,7 +212,7 @@
   </header>
 
   <!-- Stepper Indicators -->
-  <GuidedTrussStepper activeStep={currentStep} />
+  <GuidedTrussStepper activeStep={guidedState.currentStep} />
 
   <div class="workspace-layout">
     <!-- Left Panel: Canvas diagram -->
@@ -279,114 +226,76 @@
         members={activeProblem.members}
         supports={activeProblem.supports}
         loads={activeProblem.loads}
-        memberForces={solvedMemberForces}
-        reactions={solvedReactions}
-        isSolved={solvedMemberIds.length === activeProblem.members.length}
-        selectedJointId={currentSolvingJointId}
-        solvedMemberIds={solvedMemberIds}
-        highlightZeroForceIds={zeroForceSelections}
-        hideMemberForces={currentStep === 'overview' || currentStep === 'determinacy' || currentStep === 'reactions'}
+        memberForces={guidedState.solvedMemberForces}
+        reactions={guidedState.solvedReactions}
+        isSolved={guidedState.solvedMemberIds.length === activeProblem.members.length}
+        selectedJointId={guidedState.currentSolvingJointId}
+        solvedMemberIds={guidedState.solvedMemberIds}
+        highlightZeroForceIds={guidedState.zeroForceSelections}
+        hideMemberForces={guidedState.currentStep === 'overview' || guidedState.currentStep === 'determinacy' || guidedState.currentStep === 'reactions'}
       />
     </div>
 
     <!-- Right Panel: Step Instructions / Forms -->
     <div class="instructions-panel">
-      {#if currentStep === 'overview'}
-        <div class="step-card">
-          <h3>{$locale === 'id' ? 'Langkah 1: Tinjauan Soal' : 'Step 1: Problem Overview'}</h3>
-          <p class="desc">
-            {$locale === 'id' ? activeProblem.descriptionId || activeProblem.description : activeProblem.description}
-          </p>
-
-          <div class="objectives-box">
-            <h4>{$locale === 'id' ? 'Tujuan Pembelajaran:' : 'Learning Objectives:'}</h4>
-            <ul>
-              {#each activeProblem.learningObjectives as obj}
-                <li>{obj}</li>
-              {/each}
-            </ul>
-          </div>
-
-          <SolverMethodPanel solverMethod={solverResult.solverMethod} equationSystem={solverResult.equationSystem} />
-
-          <div class="actions">
-            <button class="btn btn-primary" on:click={handleCompleteOverview}>
-              {$locale === 'id' ? 'Mulai Belajar Terpandu' : 'Start Guided Analysis'}
-            </button>
-          </div>
-        </div>
-
+      {#if guidedState.currentStep === 'overview'}
+        <GuidedTrussOverviewStep
+          problem={activeProblem}
+          solverMethod={solverResult.solverMethod}
+          equationSystem={solverResult.equationSystem}
+          onStart={handleCompleteOverview}
+        />
       {:else}
         <!-- Conditional rendering based on active step -->
-        {#if currentStep === 'determinacy'}
+        {#if guidedState.currentStep === 'determinacy'}
           <DeterminacyStep
             truss={activeProblem}
-            answers={determinacyAnswers}
+            answers={guidedState.determinacyAnswers}
             onNext={handleCompleteDeterminacy}
             onStepAttempt={(data) => handleStepAttempt('determinacy', data)}
           />
-        {:else if currentStep === 'reactions'}
+        {:else if guidedState.currentStep === 'reactions'}
           <ReactionStep
             reactionsReference={solverResult.reactions}
-            answers={reactionAnswers}
+            answers={guidedState.reactionAnswers}
             onNext={handleCompleteReactions}
             onStepAttempt={(data) => handleStepAttempt('reactions', data)}
           />
-        {:else if currentStep === 'zero_members'}
+        {:else if guidedState.currentStep === 'zero_members'}
           <ZeroForceStep
             truss={activeProblem}
             referenceZeroForceIds={solverResult.zeroForceMembers}
-            bind:zeroForceSelections={zeroForceSelections}
+            bind:zeroForceSelections={guidedState.zeroForceSelections}
             onNext={handleCompleteZeroForce}
             onStepAttempt={(data) => handleStepAttempt('zero_members', data)}
           />
-        {:else if currentStep === 'joint_sequence'}
-          {#if noGuidedJointPath}
-            <div class="step-card path-blocked-card" role="status">
-              <h3>{$locale === 'id' ? 'Jalur Metode Titik Hubung Tidak Tersedia' : 'Method-of-Joints Path Unavailable'}</h3>
-              <p class="desc">
-                {$locale === 'id'
-                  ? 'Tidak ada joint tersisa dengan 1 unknown atau 2 unknown yang tidak segaris. Dua gaya batang yang segaris bekerja pada garis yang sama, sehingga ΣFx dan ΣFy tidak memberi dua arah independen untuk menyelesaikannya dari satu joint.'
-                  : 'No remaining joint has 1 unknown or 2 non-collinear unknowns. Two collinear member forces act along the same line, so ΣFx and ΣFy do not provide two independent directions for solving them from one joint.'}
-              </p>
-              <p class="desc">
-                {$locale === 'id'
-                  ? 'Fallback persamaan simultan tetap valid untuk rangka statis tertentu, tetapi itu bukan urutan langkah demi langkah Metode Titik Hubung. Buka latihan mandiri untuk melihat hasil dan panel fallback tanpa menyimpan penyelesaian terpandu palsu.'
-                  : 'The simultaneous-equilibrium fallback is still mathematically valid for determinate trusses, but it is not the same as a step-by-step method-of-joints path. Open normal practice to inspect the result and fallback panel without saving a fake guided completion.'}
-              </p>
-              <div class="actions">
-                <button class="btn btn-secondary" on:click={() => onNavigate('dashboard')}>
-                  {$locale === 'id' ? 'Ke Dashboard' : 'Dashboard'}
-                </button>
-                <button class="btn btn-primary" on:click={() => onNavigate('trusses', { problemId: activeProblem.id })}>
-                  {$locale === 'id' ? 'Lihat Latihan Mandiri' : 'View Practice Results'}
-                </button>
-              </div>
-            </div>
-          {:else if !currentSolvingJointId}
+        {:else if guidedState.currentStep === 'joint_sequence'}
+          {#if guidedState.pathStatus === 'blocked_requires_simultaneous_equilibrium'}
+            <GuidedTrussBlockedPathCard problem={activeProblem} {onNavigate} />
+          {:else if !guidedState.currentSolvingJointId}
             <JointSelectionStep
               truss={activeProblem}
-              solvedMemberIds={solvedMemberIds}
+              solvedMemberIds={guidedState.solvedMemberIds}
               onSelectJoint={handleSelectJoint}
               onStepAttempt={(data) => handleStepAttempt('joint_sequence', data)}
             />
           {:else}
             <MemberForceStep
               truss={activeProblem}
-              jointId={currentSolvingJointId}
-              solvedMemberIds={solvedMemberIds}
+              jointId={guidedState.currentSolvingJointId}
+              solvedMemberIds={guidedState.solvedMemberIds}
               referenceMemberForces={solverResult.memberForces}
-              knownReactions={solvedReactions}
-              knownMemberForces={solvedMemberForces}
+              knownReactions={guidedState.solvedReactions}
+              knownMemberForces={guidedState.solvedMemberForces}
               onSubmitAnswers={handleSolveJointForces}
               onStepAttempt={(data) => handleStepAttempt('member_forces', data)}
             />
           {/if}
-        {:else if currentStep === 'summary'}
+        {:else if guidedState.currentStep === 'summary'}
           <GuidedTrussSummary
             score={overallScore}
-            scoreBreakdown={scoreBreakdown}
-            misconceptions={misconceptions}
+            scoreBreakdown={guidedState.scoreBreakdown}
+            misconceptions={guidedState.misconceptions}
             onFinish={handleFinish}
           />
         {/if}
@@ -495,60 +404,6 @@
     padding-bottom: 0.4rem;
   }
 
-  .step-card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .step-card h3 {
-    font-size: 1.05rem;
-    margin: 0;
-  }
-
-  .step-card .desc {
-    font-size: 0.88rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  .objectives-box {
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 0.75rem;
-  }
-
-  .objectives-box h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.85rem;
-    font-weight: bold;
-    color: var(--text-primary);
-  }
-
-  .objectives-box ul {
-    margin: 0;
-    padding-left: 1.2rem;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
-  }
-
-  .path-blocked-card {
-    border-left: 4px solid #f59e0b;
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.6rem;
-  }
-
   .btn {
     font-size: 0.85rem;
     font-weight: 700;
@@ -559,8 +414,6 @@
     transition: background-color 0.15s;
   }
 
-  .btn-primary { background-color: var(--color-primary); color: white; }
-  .btn-primary:hover { background-color: var(--color-primary-hover); }
   .btn-secondary { background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); }
   .btn-secondary:hover { background-color: var(--border-color); }
 

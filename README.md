@@ -277,6 +277,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Guided workflow explains why collinear two-unknown joints do not provide two independent equations and sends fallback-only cases to normal truss practice/results without saving a fake guided completion.
 - Existing local progress storage and solver sign convention remain unchanged.
 
+### Stage 3P: Guided Truss State Machine Hardening
+- Guided truss workflow transitions now live in pure `guidedStateMachine.ts` helpers, keeping the Svelte workspace focused on route adaptation, layout, and callback wiring.
+- The path-blocked state and completion/save guard are pure and tested, including missing member-force evidence and fallback-only determinate trusses.
+- The guided truss page now delegates overview and blocked-path rendering to focused components, reducing repeated page-level UI structure.
+- Educational copy consistently distinguishes a step-by-step method-of-joints path from simultaneous joint equilibrium fallback while preserving positive-tension/negative-compression wording.
+- Quality gate commands remain unchanged.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions
