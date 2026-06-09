@@ -4,6 +4,7 @@ import { solveSupportReactions } from './supportReactions';
 import { identifyZeroForceMembers } from './zeroForceMembers';
 import { solveMethodOfJoints } from './methodOfJoints';
 import { checkJointEquilibrium } from './equilibriumCheck';
+import { solveGlobalJointEquilibrium } from './globalEquilibriumSolver';
 
 /**
  * Solve support reactions and member forces for a planar pin-jointed truss.
@@ -28,6 +29,7 @@ export function solveTruss(truss: TrussModel): TrussSolverResult {
   }
 
   const { jointsMap } = valResult;
+  messages.push('Sign convention: positive member force is tension; negative member force is compression.');
 
   // 2. Solve support reactions (Global Equilibrium)
   const supportResult = solveSupportReactions(truss, jointsMap);
@@ -80,6 +82,31 @@ export function solveTruss(truss: TrussModel): TrussSolverResult {
       jointsResult.memberForces,
       messages
     );
+  } else if (supportResult.determinacy === 'statically_determinate' && supportResult.stability === 'stable') {
+    const globalResult = solveGlobalJointEquilibrium(truss, jointsMap);
+    messages.push(...globalResult.messages);
+    if (globalResult.status === 'solved') {
+      const globalRxValues = supportResult.allReactionsList.map(reaction => globalResult.reactions[reaction.symbol] ?? 0);
+      checkJointEquilibrium(
+        truss,
+        jointsMap,
+        globalResult.reactions,
+        globalRxValues,
+        supportResult.allReactionsList,
+        globalResult.memberForces,
+        messages
+      );
+      return {
+        isSolved: true,
+        determinacy: supportResult.determinacy,
+        stability: supportResult.stability,
+        reactions: globalResult.reactions,
+        memberForces: globalResult.memberForces,
+        zeroForceMembers: zeroForceResult.zeroForceMembers,
+        jointEquations: jointsResult.jointEquations,
+        messages
+      };
+    }
   }
 
   return {

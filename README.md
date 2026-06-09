@@ -256,6 +256,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - FBD canvas coordinate and scale math moved into pure `fbdViewport.ts` helpers with regression tests.
 - Quality gates remain unchanged: test, check, build, production audit, and hygiene scans.
 
+### Stage 3M: Solver Robustness and Classroom Readiness
+- Truss solving now has a pure simultaneous joint-equilibrium fallback for statically determinate trusses when greedy method-of-joints marching cannot progress.
+- Solver messages include the member-force sign convention and explain when simultaneous equations are used.
+- Truss canvas viewport scaling moved into pure `trussViewport.ts` helpers with regression tests.
+- Attempt review includes a browser-native Print / Save PDF report flow for classroom records.
+- The app remains a static SPA with browser-local progress storage and unchanged quality gates.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions

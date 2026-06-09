@@ -6,6 +6,7 @@
   export let attempt: Attempt;
   export let telemetry: GuidedAttemptTelemetry | undefined = undefined;
   export let onNavigate: (page: string, params?: any) => void;
+  export let onPrint: () => void = () => {};
 
   function formatTime(isoString: string): string {
     try {
@@ -36,9 +37,14 @@
 </script>
 
 <header class="review-header">
-  <button class="btn btn-secondary back-btn" on:click={() => onNavigate('progress')}>
-    ◀ {$locale === 'id' ? 'Kembali ke Progress' : 'Back to Progress'}
-  </button>
+  <div class="review-actions no-print">
+    <button class="btn btn-secondary back-btn" on:click={() => onNavigate('progress')}>
+      ◀ {$locale === 'id' ? 'Kembali ke Progress' : 'Back to Progress'}
+    </button>
+    <button class="btn btn-secondary back-btn" on:click={onPrint}>
+      {$locale === 'id' ? 'Cetak / Simpan PDF' : 'Print / Save PDF'}
+    </button>
+  </div>
 
   <div class="header-main">
     <div class="header-title">
@@ -72,6 +78,12 @@
     align-self: flex-start;
     font-size: 0.82rem;
     padding: 0.45rem 0.75rem;
+  }
+
+  .review-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
 
   .header-main {
@@ -125,5 +137,11 @@
     font-size: 1.8rem;
     font-weight: 800;
     color: var(--color-success, #10b981);
+  }
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
   }
 </style>

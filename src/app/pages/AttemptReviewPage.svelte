@@ -2,6 +2,7 @@
   import { trussProblems } from '../../content/problems/truss-problems';
   import { solveTruss } from '../../lib/domain/truss/solver';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
+  import { locale } from '../../lib/utils/i18n';
   import { getFirstAttemptAccuracy, getHintUsageSummary } from '../../lib/domain/progress/guidedTelemetry';
   import { reconstructTrussReplayState, emptyTrussReplayState } from '../../lib/domain/progress/attemptReplay';
   import { buildAttemptReviewModel } from '../../lib/domain/progress/attemptReviewModel';
@@ -49,6 +50,20 @@
   // Derived aggregates
   $: firstAttemptAccuracy = telemetry ? getFirstAttemptAccuracy(telemetry.stepAttempts) : 0;
   $: hintSummary = telemetry ? getHintUsageSummary(telemetry.stepAttempts) : { totalHintsUsed: 0, maxHintLevel: 0, hintsByStep: {} };
+
+  function handlePrintReport() {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  }
+
+  function formatScore(value: number): string {
+    return `${Math.round(value * 100)}%`;
+  }
+
+  function recordEntries(record: Record<string, number> | undefined): Array<[string, number]> {
+    return Object.entries(record ?? {});
+  }
 </script>
 
 <div class="review-page-container animate-fade-in">
@@ -58,6 +73,7 @@
       {attempt}
       {telemetry}
       {onNavigate}
+      onPrint={handlePrintReport}
     />
   {/if}
 
@@ -69,6 +85,37 @@
       {onNavigate}
     />
   {:else}
+    <section class="print-report">
+      <h2>{$locale === 'id' ? 'Laporan Percobaan Siswa' : 'Student Attempt Report'}</h2>
+      <dl>
+        <div><dt>{$locale === 'id' ? 'Soal' : 'Problem'}</dt><dd>{$locale === 'id' ? activeProblem.titleId || activeProblem.title : activeProblem.title}</dd></div>
+        <div><dt>Topic</dt><dd>{attempt.topic ?? telemetry.topic}</dd></div>
+        <div><dt>Score</dt><dd>{formatScore(attempt.score)}</dd></div>
+        <div><dt>Status</dt><dd>{attempt.completed ? ($locale === 'id' ? 'Selesai' : 'Completed') : ($locale === 'id' ? 'Belum selesai' : 'Incomplete')}</dd></div>
+        <div><dt>{$locale === 'id' ? 'Tanggal' : 'Created'}</dt><dd>{attempt.createdAt}</dd></div>
+        <div><dt>{$locale === 'id' ? 'Petunjuk' : 'Hints'}</dt><dd>{hintSummary.totalHintsUsed}</dd></div>
+      </dl>
+      <h3>{$locale === 'id' ? 'Keterampilan' : 'Skill Breakdown'}</h3>
+      <ul>
+        {#each Object.entries(attempt.skillBreakdown ?? telemetry.skillBreakdown ?? {}) as [skill, value]}
+          <li>{skill}: {formatScore(value)}</li>
+        {/each}
+      </ul>
+      <h3>{$locale === 'id' ? 'Miskonsepsi' : 'Misconceptions'}</h3>
+      <p>{(attempt.misconceptions ?? []).join(', ') || '-'}</p>
+      <h3>{$locale === 'id' ? 'Jawaban Akhir' : 'Final Answers'}</h3>
+      <ul>
+        {#each recordEntries(telemetry.finalAnswers ?? attempt.answers) as [key, value]}
+          <li>{key}: {value}</li>
+        {/each}
+      </ul>
+      <h3>{$locale === 'id' ? 'Umpan Balik' : 'Feedback'}</h3>
+      <ul>
+        {#each attempt.feedback as message}
+          <li>{message}</li>
+        {/each}
+      </ul>
+    </section>
     <div class="review-grid">
       <!-- Left Column: Metrics & Misconceptions Sidebar -->
       <aside class="sidebar-panel">
@@ -138,6 +185,10 @@
     gap: 1.5rem;
   }
 
+  .print-report {
+    display: none;
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.4s ease-out;
   }
@@ -150,6 +201,49 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @media print {
+    .review-page-container {
+      max-width: none;
+      gap: 1rem;
+    }
+
+    .review-grid {
+      display: none;
+    }
+
+    .print-report {
+      display: block;
+      border: 1px solid #d1d5db;
+      padding: 1rem;
+      color: #111827;
+    }
+
+    .print-report h2,
+    .print-report h3 {
+      color: #111827;
+      margin-top: 0.75rem;
+    }
+
+    .print-report dl {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.35rem 1rem;
+      margin: 0.5rem 0 1rem;
+    }
+
+    .print-report div {
+      break-inside: avoid;
+    }
+
+    .print-report dt {
+      font-weight: 700;
+    }
+
+    .print-report dd {
+      margin: 0;
     }
   }
 </style>

@@ -3,6 +3,7 @@
   import type { Support } from '../domain/models/types';
   import { locale } from '../utils/i18n';
   import { getDistance } from '../domain/geometry/vector2d';
+  import { createTrussViewport, trussToSvgX, trussToSvgY } from './trussViewport';
 
   export let joints: TrussJoint[] = [];
   export let members: TrussMember[] = [];
@@ -38,29 +39,16 @@
   const svgHeight = 350;
   const margin = 50;
 
-  // Bounding box & Scaling calculations
-  $: minX = joints.length > 0 ? Math.min(...joints.map(j => j.position.x)) : 0;
-  $: maxX = joints.length > 0 ? Math.max(...joints.map(j => j.position.x)) : 10;
-  $: minY = joints.length > 0 ? Math.min(...joints.map(j => j.position.y)) : 0;
-  $: maxY = joints.length > 0 ? Math.max(...joints.map(j => j.position.y)) : 5;
-
-  $: spanX = maxX - minX > 1e-3 ? maxX - minX : 1.0;
-  $: spanY = maxY - minY > 1e-3 ? maxY - minY : 1.0;
-
-  $: scale = Math.min((svgWidth - 2 * margin) / spanX, (svgHeight - 2 * margin) / spanY);
-
-  $: cx = (minX + maxX) / 2;
-  $: cy = (minY + maxY) / 2;
-
-  $: svgCx = svgWidth / 2;
-  $: svgCy = svgHeight / 2;
+  // Bounding box & scaling calculations
+  $: viewport = createTrussViewport(joints, svgWidth, svgHeight, margin);
+  $: scale = viewport.scale;
 
   function toSvgX(x: number): number {
-    return svgCx + (x - cx) * scale;
+    return trussToSvgX(viewport, x);
   }
 
   function toSvgY(y: number): number {
-    return svgCy - (y - cy) * scale;
+    return trussToSvgY(viewport, y);
   }
 
   // Helper map
