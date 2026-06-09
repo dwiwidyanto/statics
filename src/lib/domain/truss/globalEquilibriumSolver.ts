@@ -2,7 +2,7 @@ import type { Reaction } from '../models/types';
 import { getDistance } from '../geometry/vector2d';
 import { getReactionsForSupport } from '../supports/support';
 import { getUnitVector } from './geometry';
-import type { TrussJoint, TrussModel } from './types';
+import type { TrussEquationRow, TrussEquationSystem, TrussEquationUnknown, TrussJoint, TrussModel } from './types';
 
 export type LinearSolveStatus = 'solved' | 'singular' | 'underdetermined' | 'overdetermined';
 
@@ -17,6 +17,7 @@ export interface GlobalTrussSolveResult {
   memberForces: Record<string, number>;
   reactions: Record<string, number>;
   messages: string[];
+  equationSystem?: TrussEquationSystem;
 }
 
 const EPS = 1e-9;
@@ -80,6 +81,32 @@ function collectTrussReactions(truss: TrussModel): Reaction[] {
   return reactions;
 }
 
+function unknownKeyForReaction(reaction: Reaction): string {
+  return `reaction:${reaction.symbol}`;
+}
+
+function formatEquation(axis: 'x' | 'y', jointLabel: string, coefficients: Record<string, number>, rhs: number): string {
+  const terms = Object.entries(coefficients)
+    .filter(([, value]) => Math.abs(value) > 1e-9)
+    .map(([key, value]) => `${value >= 0 ? '+' : '-'} ${Math.abs(value).toFixed(3)}(${key})`);
+  return `ΣF${axis} @ ${jointLabel}: ${terms.join(' ') || '0'} = ${rhs.toFixed(3)}`;
+}
+
+function computeResiduals(equations: TrussEquationRow[], solvedVector: Record<string, number>) {
+  const byJoint = new Map<string, { jointId: string; jointLabel: string; fx: number; fy: number }>();
+  for (const row of equations) {
+    const lhs = Object.entries(row.coefficients).reduce((sum, [key, coefficient]) => sum + coefficient * (solvedVector[key] ?? 0), 0);
+    const residual = lhs - row.rhs;
+    const existing = byJoint.get(row.jointId) ?? { jointId: row.jointId, jointLabel: row.jointLabel, fx: 0, fy: 0 };
+    if (row.axis === 'x') existing.fx = roundForce(residual);
+    else existing.fy = roundForce(residual);
+    byJoint.set(row.jointId, existing);
+  }
+  const perJoint = Array.from(byJoint.values());
+  const maxAbs = perJoint.reduce((max, item) => Math.max(max, Math.abs(item.fx), Math.abs(item.fy)), 0);
+  return { perJoint, maxAbs: roundForce(maxAbs) };
+}
+
 /**
  * Solves a statically determinate planar truss by assembling all joint equilibrium
  * equations at once. Positive member force follows the app convention: tension.
@@ -94,6 +121,23 @@ export function solveGlobalJointEquilibrium(
   const reactionsList = collectTrussReactions(truss);
   const unknownCount = truss.members.length + reactionsList.length;
   const equationCount = truss.joints.length * 2;
+  const unknowns: TrussEquationUnknown[] = [
+    ...truss.members.map(member => ({
+      kind: 'member' as const,
+      key: `member:${member.id}`,
+      id: member.id,
+      label: member.label,
+      convention: 'positive_tension' as const
+    })),
+    ...reactionsList.map(reaction => ({
+      kind: 'reaction' as const,
+      key: unknownKeyForReaction(reaction),
+      symbol: reaction.symbol,
+      supportId: reaction.supportId,
+      supportLabel: reaction.symbol.replace(/^R_|^M_/, '').replace(/[xy]$/, ''),
+      direction: reaction.direction
+    }))
+  ];
 
   if (unknownCount < equationCount) {
     return {
@@ -114,10 +158,13 @@ export function solveGlobalJointEquilibrium(
 
   const matrix: number[][] = [];
   const rhs: number[] = [];
+  const equations: TrussEquationRow[] = [];
 
   for (const joint of truss.joints) {
     const rowX = new Array(unknownCount).fill(0);
     const rowY = new Array(unknownCount).fill(0);
+    const coefficientsX: Record<string, number> = {};
+    const coefficientsY: Record<string, number> = {};
 
     truss.members.forEach((member, memberIndex) => {
       if (member.jointA !== joint.id && member.jointB !== joint.id) return;
@@ -127,6 +174,8 @@ export function solveGlobalJointEquilibrium(
       const unit = getUnitVector(joint.position, otherJoint.position);
       rowX[memberIndex] = unit.x;
       rowY[memberIndex] = unit.y;
+      coefficientsX[`member:${member.id}`] = unit.x;
+      coefficientsY[`member:${member.id}`] = unit.y;
     });
 
     reactionsList.forEach((reaction, reactionIndex) => {
@@ -134,6 +183,8 @@ export function solveGlobalJointEquilibrium(
       const column = truss.members.length + reactionIndex;
       rowX[column] = reaction.direction.x;
       rowY[column] = reaction.direction.y;
+      coefficientsX[unknownKeyForReaction(reaction)] = reaction.direction.x;
+      coefficientsY[unknownKeyForReaction(reaction)] = reaction.direction.y;
     });
 
     let loadFx = 0;
@@ -146,6 +197,24 @@ export function solveGlobalJointEquilibrium(
 
     matrix.push(rowX, rowY);
     rhs.push(-loadFx, -loadFy);
+    equations.push(
+      {
+        jointId: joint.id,
+        jointLabel: joint.label,
+        axis: 'x',
+        coefficients: coefficientsX,
+        rhs: -loadFx,
+        equation: formatEquation('x', joint.label, coefficientsX, -loadFx)
+      },
+      {
+        jointId: joint.id,
+        jointLabel: joint.label,
+        axis: 'y',
+        coefficients: coefficientsY,
+        rhs: -loadFy,
+        equation: formatEquation('y', joint.label, coefficientsY, -loadFy)
+      }
+    );
   }
 
   const solved = solveLinearSystem(matrix, rhs);
@@ -159,19 +228,33 @@ export function solveGlobalJointEquilibrium(
   }
 
   const memberForces: Record<string, number> = {};
+  const solvedVector: Record<string, number> = {};
   truss.members.forEach((member, index) => {
-    memberForces[member.id] = roundForce(solved.values[index]);
+    const value = roundForce(solved.values[index]);
+    memberForces[member.id] = value;
+    solvedVector[`member:${member.id}`] = value;
   });
 
   const reactions: Record<string, number> = {};
   reactionsList.forEach((reaction, index) => {
-    reactions[reaction.symbol] = roundForce(solved.values[truss.members.length + index]);
+    const value = roundForce(solved.values[truss.members.length + index]);
+    reactions[reaction.symbol] = value;
+    solvedVector[unknownKeyForReaction(reaction)] = value;
   });
+  const residuals = computeResiduals(equations, solvedVector);
 
   return {
     status: 'solved',
     memberForces,
     reactions,
+    equationSystem: {
+      unknowns,
+      equations,
+      solvedVector,
+      residuals,
+      unknownCount,
+      equationCount
+    },
     messages: [
       ...messages,
       'Solved using simultaneous joint equilibrium because no joint-by-joint path was available.'

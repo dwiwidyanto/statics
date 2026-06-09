@@ -65,10 +65,23 @@ describe('global truss equilibrium solver', () => {
     const result = solveTruss(greedyCollinearStuckTruss());
     expect(result.isSolved).toBe(true);
     expect(result.determinacy).toBe('statically_determinate');
+    expect(result.solverMethod).toBe('simultaneous_joint_equilibrium_fallback');
     expect(Object.keys(result.memberForces)).toHaveLength(5);
     expect(result.messages.join(' ')).toContain('Solved using simultaneous joint equilibrium');
     expect(result.messages.join(' ')).toContain('Positive member force denotes tension');
     expect(result.memberForces['m-cd']).toBeCloseTo(0, 1);
+
+    expect(result.equationSystem?.unknownCount).toBe(8);
+    expect(result.equationSystem?.equationCount).toBe(8);
+    expect(result.equationSystem?.equations).toHaveLength(8);
+    expect(result.equationSystem?.unknowns.filter(unknown => unknown.kind === 'member')).toHaveLength(5);
+    expect(result.equationSystem?.unknowns.filter(unknown => unknown.kind === 'reaction')).toHaveLength(3);
+    expect(result.equationSystem?.unknowns.find(unknown => unknown.kind === 'member')).toMatchObject({
+      convention: 'positive_tension',
+    });
+    expect(result.equationSystem?.equations.find(row => row.jointId === 'j-d' && row.axis === 'y')?.rhs).toBeCloseTo(800);
+    expect(result.equationSystem?.solvedVector['member:m-cd']).toBeCloseTo(0, 1);
+    expect(result.equationSystem?.residuals.maxAbs).toBeLessThanOrEqual(0.01);
   });
 
   it('reports singular truss systems from the pure global solver', () => {

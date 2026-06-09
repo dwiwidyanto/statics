@@ -1,6 +1,8 @@
 <script lang="ts">
   import { locale } from '../../lib/utils/i18n';
-  import type { TrussMember } from '../../lib/domain/truss/types';
+  import type { TrussEquationSystem, TrussMember, TrussSolverMethod } from '../../lib/domain/truss/types';
+  import SolverMethodPanel from './truss/SolverMethodPanel.svelte';
+  import EquationSystemPanel from './truss/EquationSystemPanel.svelte';
 
   export let m: number;
   export let r: number;
@@ -11,7 +13,12 @@
   export let memberForces: Record<string, number> = {};
   export let members: TrussMember[] = [];
   export let zeroForceMembers: string[] = [];
+  export let solverMethod: TrussSolverMethod | undefined = 'method_of_joints';
+  export let equationSystem: TrussEquationSystem | undefined = undefined;
 </script>
+
+<SolverMethodPanel {solverMethod} {equationSystem} />
+<EquationSystemPanel {equationSystem} />
 
 <div class="results-grid">
   <!-- Determinacy Card -->

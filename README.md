@@ -263,6 +263,13 @@ StaticsLab is fully containerized and ready for instant deployment on any Coolif
 - Attempt review includes a browser-native Print / Save PDF report flow for classroom records.
 - The app remains a static SPA with browser-local progress storage and unchanged quality gates.
 
+### Stage 3N: Solver Transparency and Classroom Report Hardening
+- Truss results now identify the active solver method, distinguishing the primary method-of-joints workflow from the simultaneous joint-equilibrium fallback.
+- Fallback solves expose a lightweight equation-system view with unknown counts, equation counts, residual checks, and the positive-tension convention.
+- Attempt review report exports now use a shared classroom report model for Print / Save PDF, single-attempt JSON, and single-attempt CSV.
+- Instructor progress CSV export includes guided skill-breakdown columns while preserving existing local progress data compatibility.
+- Quality gates remain unchanged: test, check, build, production audit, and hygiene scans.
+
 ### Current Learning Modules
 - FBD and 2D equilibrium
 - Beam support reactions

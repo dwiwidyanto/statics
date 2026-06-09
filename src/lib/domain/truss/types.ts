@@ -59,6 +59,53 @@ export interface JointEquationStep {
   explanation: string;
 }
 
+export type TrussSolverMethod = 'method_of_joints' | 'simultaneous_joint_equilibrium_fallback';
+
+export type TrussEquationUnknown =
+  | {
+      kind: 'member';
+      key: string;
+      id: string;
+      label: string;
+      convention: 'positive_tension';
+    }
+  | {
+      kind: 'reaction';
+      key: string;
+      symbol: string;
+      supportId: string;
+      supportLabel: string;
+      direction: { x: number; y: number };
+    };
+
+export interface TrussEquationRow {
+  jointId: string;
+  jointLabel: string;
+  axis: 'x' | 'y';
+  coefficients: Record<string, number>;
+  rhs: number;
+  equation: string;
+}
+
+export interface TrussResidual {
+  jointId: string;
+  jointLabel: string;
+  fx: number;
+  fy: number;
+}
+
+export interface TrussEquationSystem {
+  unknowns: TrussEquationUnknown[];
+  equations: TrussEquationRow[];
+  solvedVector: Record<string, number>;
+  residuals: {
+    perJoint: TrussResidual[];
+    maxAbs: number;
+  };
+  unknownCount: number;
+  equationCount: number;
+}
+
 export interface TrussSolverResult {
   isSolved: boolean;
   determinacy: 'statically_determinate' | 'statically_indeterminate' | 'unstable';
@@ -68,4 +115,6 @@ export interface TrussSolverResult {
   zeroForceMembers: string[];
   jointEquations: JointEquationStep[];
   messages: string[];
+  solverMethod?: TrussSolverMethod;
+  equationSystem?: TrussEquationSystem;
 }

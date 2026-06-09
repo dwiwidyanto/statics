@@ -223,6 +223,8 @@
           memberForces={solverResult.memberForces} 
           members={activeProblem.members} 
           zeroForceMembers={solverResult.zeroForceMembers} 
+          solverMethod={solverResult.solverMethod}
+          equationSystem={solverResult.equationSystem}
         />
       {/if}
     </div>

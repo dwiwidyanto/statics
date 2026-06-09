@@ -2,10 +2,10 @@
   import { trussProblems } from '../../content/problems/truss-problems';
   import { solveTruss } from '../../lib/domain/truss/solver';
   import { getProgressRepository } from '../../lib/services/localProgressRepository';
-  import { locale } from '../../lib/utils/i18n';
   import { getFirstAttemptAccuracy, getHintUsageSummary } from '../../lib/domain/progress/guidedTelemetry';
   import { reconstructTrussReplayState, emptyTrussReplayState } from '../../lib/domain/progress/attemptReplay';
   import { buildAttemptReviewModel } from '../../lib/domain/progress/attemptReviewModel';
+  import { buildClassroomReport } from '../../lib/domain/progress/classroomReport';
   import type { Attempt } from '../../lib/domain/progress/types';
 
   // Import Sub-components
@@ -17,6 +17,8 @@
   import AttemptCanvasReplay from '../components/attempt-review/AttemptCanvasReplay.svelte';
   import StepAttemptDetails from '../components/attempt-review/StepAttemptDetails.svelte';
   import AttemptReviewEmptyState from '../components/attempt-review/AttemptReviewEmptyState.svelte';
+  import ReportExportActions from '../components/attempt-review/ReportExportActions.svelte';
+  import ClassroomReportPrintView from '../components/attempt-review/ClassroomReportPrintView.svelte';
 
   export let attemptId: string;
   export let onNavigate: (page: string, params?: any) => void;
@@ -34,6 +36,22 @@
   $: activeProblem = reviewModel.mode === 'truss_replay' ? reviewModel.problem : null;
   $: solverResult = activeProblem ? solveTruss(activeProblem) : null;
   $: referenceZeroForceIds = solverResult?.zeroForceMembers ?? [];
+  $: classroomReport = attempt
+    ? buildClassroomReport({
+        attempt,
+        problem: activeProblem
+          ? {
+              id: activeProblem.id,
+              title: activeProblem.title,
+              titleId: activeProblem.titleId,
+              topic: activeProblem.topic,
+              difficulty: activeProblem.difficulty,
+            }
+          : undefined,
+        telemetry,
+        solverResult,
+      })
+    : null;
 
   // Timeline scrubbing state
   let selectedAttemptIdx = 0;
@@ -56,14 +74,6 @@
       window.print();
     }
   }
-
-  function formatScore(value: number): string {
-    return `${Math.round(value * 100)}%`;
-  }
-
-  function recordEntries(record: Record<string, number> | undefined): Array<[string, number]> {
-    return Object.entries(record ?? {});
-  }
 </script>
 
 <div class="review-page-container animate-fade-in">
@@ -85,37 +95,10 @@
       {onNavigate}
     />
   {:else}
-    <section class="print-report">
-      <h2>{$locale === 'id' ? 'Laporan Percobaan Siswa' : 'Student Attempt Report'}</h2>
-      <dl>
-        <div><dt>{$locale === 'id' ? 'Soal' : 'Problem'}</dt><dd>{$locale === 'id' ? activeProblem.titleId || activeProblem.title : activeProblem.title}</dd></div>
-        <div><dt>Topic</dt><dd>{attempt.topic ?? telemetry.topic}</dd></div>
-        <div><dt>Score</dt><dd>{formatScore(attempt.score)}</dd></div>
-        <div><dt>Status</dt><dd>{attempt.completed ? ($locale === 'id' ? 'Selesai' : 'Completed') : ($locale === 'id' ? 'Belum selesai' : 'Incomplete')}</dd></div>
-        <div><dt>{$locale === 'id' ? 'Tanggal' : 'Created'}</dt><dd>{attempt.createdAt}</dd></div>
-        <div><dt>{$locale === 'id' ? 'Petunjuk' : 'Hints'}</dt><dd>{hintSummary.totalHintsUsed}</dd></div>
-      </dl>
-      <h3>{$locale === 'id' ? 'Keterampilan' : 'Skill Breakdown'}</h3>
-      <ul>
-        {#each Object.entries(attempt.skillBreakdown ?? telemetry.skillBreakdown ?? {}) as [skill, value]}
-          <li>{skill}: {formatScore(value)}</li>
-        {/each}
-      </ul>
-      <h3>{$locale === 'id' ? 'Miskonsepsi' : 'Misconceptions'}</h3>
-      <p>{(attempt.misconceptions ?? []).join(', ') || '-'}</p>
-      <h3>{$locale === 'id' ? 'Jawaban Akhir' : 'Final Answers'}</h3>
-      <ul>
-        {#each recordEntries(telemetry.finalAnswers ?? attempt.answers) as [key, value]}
-          <li>{key}: {value}</li>
-        {/each}
-      </ul>
-      <h3>{$locale === 'id' ? 'Umpan Balik' : 'Feedback'}</h3>
-      <ul>
-        {#each attempt.feedback as message}
-          <li>{message}</li>
-        {/each}
-      </ul>
-    </section>
+    {#if classroomReport}
+      <ReportExportActions report={classroomReport} onPrint={handlePrintReport} />
+      <ClassroomReportPrintView report={classroomReport} />
+    {/if}
     <div class="review-grid">
       <!-- Left Column: Metrics & Misconceptions Sidebar -->
       <aside class="sidebar-panel">
@@ -185,10 +168,6 @@
     gap: 1.5rem;
   }
 
-  .print-report {
-    display: none;
-  }
-
   .animate-fade-in {
     animation: fadeIn 0.4s ease-out;
   }
@@ -214,36 +193,5 @@
       display: none;
     }
 
-    .print-report {
-      display: block;
-      border: 1px solid #d1d5db;
-      padding: 1rem;
-      color: #111827;
-    }
-
-    .print-report h2,
-    .print-report h3 {
-      color: #111827;
-      margin-top: 0.75rem;
-    }
-
-    .print-report dl {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.35rem 1rem;
-      margin: 0.5rem 0 1rem;
-    }
-
-    .print-report div {
-      break-inside: avoid;
-    }
-
-    .print-report dt {
-      font-weight: 700;
-    }
-
-    .print-report dd {
-      margin: 0;
-    }
   }
 </style>

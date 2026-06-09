@@ -1,5 +1,6 @@
 import type { Attempt } from '../domain/progress/types';
 import { getHintUsageSummary } from '../domain/progress/guidedTelemetry';
+import { escapeCsvCell } from '../domain/progress/classroomReport';
 
 const csvHeaders = [
   'attempt_id',
@@ -10,13 +11,13 @@ const csvHeaders = [
   'created_at',
   'misconceptions',
   'weakest_skill',
-  'hints_used'
+  'hints_used',
+  'determinacy',
+  'reactions',
+  'zeroForceMembers',
+  'jointSelection',
+  'memberForces'
 ];
-
-function escapeCsv(value: string | number | boolean): string {
-  const text = String(value);
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
 
 function weakestSkill(attempt: Attempt): string {
   if (!attempt.skillBreakdown) return '';
@@ -43,8 +44,13 @@ export function serializeAttemptsCsv(attempts: Attempt[]): string {
       attempt.createdAt,
       (attempt.misconceptions ?? []).join(';'),
       weakestSkill(attempt),
-      hintsUsed(attempt)
-    ].map(escapeCsv).join(','));
+      hintsUsed(attempt),
+      attempt.skillBreakdown?.determinacy ?? '',
+      attempt.skillBreakdown?.reactions ?? '',
+      attempt.skillBreakdown?.zeroForceMembers ?? '',
+      attempt.skillBreakdown?.jointSelection ?? '',
+      attempt.skillBreakdown?.memberForces ?? ''
+    ].map(escapeCsvCell).join(','));
 
   return [csvHeaders.join(','), ...rows].join('\n');
 }

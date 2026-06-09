@@ -82,6 +82,17 @@ export function solveTruss(truss: TrussModel): TrussSolverResult {
       jointsResult.memberForces,
       messages
     );
+    return {
+      isSolved: true,
+      determinacy: supportResult.determinacy,
+      stability: supportResult.stability,
+      reactions: supportResult.reactions,
+      memberForces: jointsResult.memberForces,
+      zeroForceMembers: zeroForceResult.zeroForceMembers,
+      jointEquations: jointsResult.jointEquations,
+      messages,
+      solverMethod: 'method_of_joints'
+    };
   } else if (supportResult.determinacy === 'statically_determinate' && supportResult.stability === 'stable') {
     const globalResult = solveGlobalJointEquilibrium(truss, jointsMap);
     messages.push(...globalResult.messages);
@@ -104,7 +115,9 @@ export function solveTruss(truss: TrussModel): TrussSolverResult {
         memberForces: globalResult.memberForces,
         zeroForceMembers: zeroForceResult.zeroForceMembers,
         jointEquations: jointsResult.jointEquations,
-        messages
+        messages,
+        solverMethod: 'simultaneous_joint_equilibrium_fallback',
+        equationSystem: globalResult.equationSystem
       };
     }
   }
@@ -117,6 +130,7 @@ export function solveTruss(truss: TrussModel): TrussSolverResult {
     memberForces: jointsResult.memberForces,
     zeroForceMembers: zeroForceResult.zeroForceMembers,
     jointEquations: jointsResult.jointEquations,
-    messages
+    messages,
+    solverMethod: 'method_of_joints'
   };
 }

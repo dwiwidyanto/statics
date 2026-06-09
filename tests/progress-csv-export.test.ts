@@ -33,8 +33,8 @@ describe('Instructor CSV progress export', () => {
 
     const csv = serializeAttemptsCsv(attempts);
     const lines = csv.split('\n');
-    expect(lines[0]).toBe('attempt_id,problem_id,topic,score,completed,created_at,misconceptions,weakest_skill,hints_used');
+    expect(lines[0]).toBe('attempt_id,problem_id,topic,score,completed,created_at,misconceptions,weakest_skill,hints_used,determinacy,reactions,zeroForceMembers,jointSelection,memberForces');
     expect(lines[1]).toContain('att-1,beam-1,beam-internal-forces,1,true,2026-06-01T00:00:00Z');
-    expect(lines[2]).toContain('att-2,truss-simple,trusses,0.7,false,2026-06-02T00:00:00Z,sign_reversed;zero_force_missed,reactions,0');
+    expect(lines[2]).toContain('att-2,truss-simple,trusses,0.7,false,2026-06-02T00:00:00Z,sign_reversed;zero_force_missed,reactions,0,,0.4,,,0.8');
   });
 });

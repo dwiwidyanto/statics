@@ -23,6 +23,7 @@
   import MemberForceStep from '../components/truss-guided/MemberForceStep.svelte';
   import GuidedTrussSummary from '../components/truss-guided/GuidedTrussSummary.svelte';
   import TrussRouteNotFound from '../components/truss/TrussRouteNotFound.svelte';
+  import SolverMethodPanel from '../components/truss/SolverMethodPanel.svelte';
 
   import TrussCanvas from '../../lib/ui/TrussCanvas.svelte';
 
@@ -296,6 +297,8 @@
               {/each}
             </ul>
           </div>
+
+          <SolverMethodPanel solverMethod={solverResult.solverMethod} equationSystem={solverResult.equationSystem} />
 
           <div class="actions">
             <button class="btn btn-primary" on:click={handleCompleteOverview}>
